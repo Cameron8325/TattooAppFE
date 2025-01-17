@@ -1,25 +1,20 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import AppointmentsPage from './pages/AppointmentsPage';
+import AdminDashboard from './pages/AdminDashboard';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+const App = () => {
+    return (
+        <Router>
+            <Switch>
+                <Route exact path="/login" component={LoginPage} />
+                <Route exact path="/appointments" component={AppointmentsPage} />
+                <Route exact path="/dashboard" component={AdminDashboard} />
+                <Route path="/" render={() => <h1>Welcome to the Tattoo Appointment App</h1>} />
+            </Switch>
+        </Router>
+    );
+};
 
 export default App;
