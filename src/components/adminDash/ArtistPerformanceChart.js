@@ -6,7 +6,7 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts';
-import axios from '../services/axios.js';
+import axios from '../../services/axios'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 

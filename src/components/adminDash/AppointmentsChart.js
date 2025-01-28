@@ -8,7 +8,7 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts';
-import axios from '../services/axios.js';
+import axios from '../../services/axios.js';
 
 const AppointmentsChart = () => {
     const [data, setData] = useState([]);
