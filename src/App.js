@@ -9,6 +9,8 @@ import UserManagementPage from './pages/UserManagementPage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
 import AppointmentCalendarPage from './pages/AppointmentCalendarPage';
 import BillingReportsPage from './pages/BillingReportsPage';
+import "tui-calendar/dist/tui-calendar.min.css";
+
 
 
 const App = () => {
