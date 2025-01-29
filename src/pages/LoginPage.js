@@ -1,68 +1,65 @@
-import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { Box, TextField, Button, Typography, Alert } from '@mui/material';
-import axios from '../services/axios';
+import React, { useState } from "react";
+import { login, getUser } from "../services/authService";
+import { useHistory } from "react-router-dom"; // ✅ Replacing useNavigate with useHistory
+import { Container, TextField, Button, Typography, Box, Alert } from "@mui/material";
 
 const LoginPage = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const history = useHistory();
+  const [credentials, setCredentials] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
+  const history = useHistory(); // ✅ Replacing useNavigate with useHistory
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setError('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await login(credentials);
+      const user = await getUser();
+      if (user.data) {
+        history.push("/dashboard"); // ✅ useHistory() replacement for navigation
+      }
+    } catch (error) {
+      setError("Invalid username or password.");
+    }
+  };
 
-        try {
-            const response = await axios.post('/auth/login/', { email, password });
-            const token = response.data.token;
-            localStorage.setItem('token', token); // Store the token
-            history.push('/appointments'); // Redirect to appointments page
-        } catch (err) {
-            setError('Invalid email or password. Please try again.');
-        }
-    };
+  return (
+    <Container maxWidth="sm">
+      <Box sx={{ mt: 5, p: 4, boxShadow: 3, borderRadius: 2, textAlign: "center" }}>
+        <Typography variant="h4" gutterBottom>
+          Login
+        </Typography>
 
-    return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100vh',
-                padding: 3,
-            }}
-        >
-            <Typography variant="h4" gutterBottom>
-                Login
-            </Typography>
-            {error && <Alert severity="error" sx={{ marginBottom: 2 }}>{error}</Alert>}
-            <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: 400 }}>
-                <TextField
-                    label="Email"
-                    type="email"
-                    fullWidth
-                    required
-                    margin="normal"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-                <TextField
-                    label="Password"
-                    type="password"
-                    fullWidth
-                    required
-                    margin="normal"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-                <Button type="submit" variant="contained" color="primary" fullWidth sx={{ marginTop: 2 }}>
-                    Login
-                </Button>
-            </form>
+        {error && <Alert severity="error">{error}</Alert>}
+
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+          <TextField
+            label="Username"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+            required
+          />
+
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+            Login
+          </Button>
         </Box>
-    );
+
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Don't have an account? <a href="/register">Register</a>
+        </Typography>
+      </Box>
+    </Container>
+  );
 };
 
 export default LoginPage;

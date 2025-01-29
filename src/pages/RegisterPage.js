@@ -1,108 +1,74 @@
-import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { Box, TextField, Button, Typography, Alert } from '@mui/material';
-import axios from '../services/axios';
+import React, { useState } from "react";
+import { register } from "../services/authService";
+import { useHistory } from "react-router-dom"; // ✅ Replacing useNavigate with useHistory
+import { Container, TextField, Button, Typography, Box, Alert } from "@mui/material";
 
 const RegisterPage = () => {
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-    });
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const history = useHistory();
+  const [user, setUser] = useState({ username: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const history = useHistory(); // ✅ Replacing useNavigate with useHistory
 
-    const handleInputChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await register(user);
+      setSuccess(true);
+      setTimeout(() => history.push("/login"), 1500); // ✅ Redirect after success
+    } catch (error) {
+      setError("Registration failed. Try a different username or email.");
+    }
+  };
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        setError('');
-        setSuccess('');
+  return (
+    <Container maxWidth="sm">
+      <Box sx={{ mt: 5, p: 4, boxShadow: 3, borderRadius: 2, textAlign: "center" }}>
+        <Typography variant="h4" gutterBottom>
+          Register
+        </Typography>
 
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match.');
-            return;
-        }
+        {error && <Alert severity="error">{error}</Alert>}
+        {success && <Alert severity="success">Registration successful! Redirecting...</Alert>}
 
-        try {
-            await axios.post('/auth/register/', {
-                username: formData.username,
-                email: formData.email,
-                password: formData.password,
-            });
-            setSuccess('Registration successful! Redirecting to login...');
-            setTimeout(() => history.push('/login'), 2000); // Redirect after success
-        } catch (err) {
-            setError('Error registering. Please try again.');
-        }
-    };
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+          <TextField
+            label="Username"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            onChange={(e) => setUser({ ...user, username: e.target.value })}
+            required
+          />
+          <TextField
+            label="Email"
+            type="email"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            onChange={(e) => setUser({ ...user, email: e.target.value })}
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            onChange={(e) => setUser({ ...user, password: e.target.value })}
+            required
+          />
 
-    return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100vh',
-                padding: 3,
-            }}
-        >
-            <Typography variant="h4" gutterBottom>
-                Register
-            </Typography>
-            {error && <Alert severity="error" sx={{ marginBottom: 2 }}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ marginBottom: 2 }}>{success}</Alert>}
-            <form onSubmit={handleRegister} style={{ width: '100%', maxWidth: 400 }}>
-                <TextField
-                    label="Username"
-                    name="username"
-                    fullWidth
-                    required
-                    margin="normal"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                />
-                <TextField
-                    label="Email"
-                    name="email"
-                    type="email"
-                    fullWidth
-                    required
-                    margin="normal"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                />
-                <TextField
-                    label="Password"
-                    name="password"
-                    type="password"
-                    fullWidth
-                    required
-                    margin="normal"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                />
-                <TextField
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    type="password"
-                    fullWidth
-                    required
-                    margin="normal"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                />
-                <Button type="submit" variant="contained" color="primary" fullWidth sx={{ marginTop: 2 }}>
-                    Register
-                </Button>
-            </form>
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+            Register
+          </Button>
         </Box>
-    );
+
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Already have an account? <a href="/login">Login</a>
+        </Typography>
+      </Box>
+    </Container>
+  );
 };
 
 export default RegisterPage;
