@@ -12,13 +12,14 @@ const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await register(user);
-      setSuccess(true);
-      setTimeout(() => history.push("/login"), 1500); // ✅ Redirect after success
+        await register(user);
+        setSuccess(true);
+        setTimeout(() => history.push("/login"), 1500); // ✅ Redirect after success
     } catch (error) {
-      setError("Registration failed. Try a different username or email.");
+        setError("Registration failed. Try a different username or email.");
     }
-  };
+};
+
 
   return (
     <Container maxWidth="sm">

@@ -11,15 +11,16 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(credentials);
-      const user = await getUser();
-      if (user.data) {
-        history.push("/dashboard"); // ✅ useHistory() replacement for navigation
-      }
+        await login(credentials); // ✅ No need to handle tokens
+        const user = await getUser(); // ✅ Fetch user from session
+        if (user.data) {
+            history.push("/dashboard"); // ✅ Redirect after successful login
+        }
     } catch (error) {
-      setError("Invalid username or password.");
+        setError("Invalid username or password.");
     }
-  };
+};
+
 
   return (
     <Container maxWidth="sm">
