@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -10,23 +10,38 @@ import {
   List,
   ListItem,
   ListItemText,
-  useMediaQuery,  // ✅ For dynamic responsiveness
+  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { NavLink, useHistory } from "react-router-dom";
-import { logout } from "../../services/authService";
+import { logout, getUser } from "../../services/authService";
 
 const Navbar = () => {
   const history = useHistory();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // ✅ Track login state
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md")); // ✅ Switches at medium breakpoint (~900px)
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Check authentication status on mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        await getUser();
+        setIsAuthenticated(true);
+      } catch {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuthStatus();
+  }, []);
 
   const handleLogout = async () => {
     try {
       await logout();
-      history.push("/login");
+      setIsAuthenticated(false);
+      window.location.href = "/login"; // ✅ Ensure proper state reset
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -43,35 +58,41 @@ const Navbar = () => {
     { label: "Billing Reports", path: "/billing-reports" },
     { label: "Users", path: "/user-management" },
     { label: "Employees", path: "/employee-dashboard" },
-    { label: "Access Denied", path: "/access-denied" },
-    { label: "Login", path: "/login" },
-    { label: "Register", path: "/register" },
   ];
 
   return (
     <AppBar position="static">
-      <Toolbar sx={{ justifyContent: "space-between", flexWrap: "wrap" }}> 
-        {/* Logo / Title */}
+      <Toolbar sx={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <Typography variant="h6" sx={{ flexGrow: 1, whiteSpace: "nowrap" }}>
           Tattoo Appointment App
         </Typography>
 
-        {/* Mobile Menu (Uses Drawer when screen is small) */}
+        {/* Mobile Menu */}
         {isSmallScreen ? (
           <IconButton edge="start" color="inherit" onClick={toggleDrawer(true)}>
             <MenuIcon />
           </IconButton>
         ) : (
-          /* Desktop Menu */
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, overflow: "auto" }}>
             {navLinks.map((link) => (
               <Button key={link.path} color="inherit" component={NavLink} to={link.path}>
                 {link.label}
               </Button>
             ))}
-            <Button color="inherit" onClick={handleLogout}>
-              Logout
-            </Button>
+            {isAuthenticated ? (
+              <Button color="inherit" onClick={handleLogout}>
+                Logout
+              </Button>
+            ) : (
+              <>
+                <Button color="inherit" component={NavLink} to="/login">
+                  Login
+                </Button>
+                <Button color="inherit" component={NavLink} to="/register">
+                  Register
+                </Button>
+              </>
+            )}
           </Box>
         )}
 
@@ -83,9 +104,20 @@ const Navbar = () => {
                 <ListItemText primary={link.label} />
               </ListItem>
             ))}
-            <ListItem button onClick={handleLogout}>
-              <ListItemText primary="Logout" />
-            </ListItem>
+            {isAuthenticated ? (
+              <ListItem button onClick={handleLogout}>
+                <ListItemText primary="Logout" />
+              </ListItem>
+            ) : (
+              <>
+                <ListItem button component={NavLink} to="/login" onClick={toggleDrawer(false)}>
+                  <ListItemText primary="Login" />
+                </ListItem>
+                <ListItem button component={NavLink} to="/register" onClick={toggleDrawer(false)}>
+                  <ListItemText primary="Register" />
+                </ListItem>
+              </>
+            )}
           </List>
         </Drawer>
       </Toolbar>

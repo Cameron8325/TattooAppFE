@@ -27,11 +27,26 @@ export const login = async (userData) => {
 };
 
 
+export const getCSRFToken = async () => {
+    try {
+        const response = await axios.get("csrf/", { withCredentials: true });
+        return response.data.csrfToken;
+    } catch (error) {
+        console.error("CSRF token fetch error:", error);
+        return null;
+    }
+};
+
 export const logout = async () => {
     try {
+        const csrfToken = await getCSRFToken(); // 🔍 Get CSRF before logging out
+        if (!csrfToken) throw new Error("CSRF token not found");
+
         const response = await axios.post("logout/", {}, {
-            withCredentials: true,  // ✅ Ensures session is properly destroyed
+            withCredentials: true,
+            headers: { "X-CSRFToken": csrfToken },
         });
+
         console.log("✅ Logout successful:", response.data);
         return response;
     } catch (error) {
