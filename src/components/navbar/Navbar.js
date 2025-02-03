@@ -14,24 +14,26 @@ import {
   useTheme,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { NavLink, useHistory } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { logout, getUser } from "../../services/authService";
 
 const Navbar = () => {
-  const history = useHistory();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false); // ✅ Track login state
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const [role, setRole] = useState('employee');
 
   // Check authentication status on mount
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        await getUser();
+        const user = await getUser();
         setIsAuthenticated(true);
+        setRole(user.data.role)
       } catch {
         setIsAuthenticated(false);
+        setRole(null);
       }
     };
     checkAuthStatus();

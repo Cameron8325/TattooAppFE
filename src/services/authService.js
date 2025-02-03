@@ -70,3 +70,12 @@ export const getUser = async () => {
     }
 };
 
+export const getRole = async () => {
+    try {const response = await getUser();
+        const role = response.data.role;
+        return role;
+    } catch (error) {
+        console.error("Error fetching user role:", error)
+        return null;
+    }
+};
