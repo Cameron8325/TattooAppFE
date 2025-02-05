@@ -111,7 +111,7 @@ const AppointmentCalendarPage = () => {
       // /services/
       const [artistsRes, clientsRes, servicesRes] = await Promise.all([
         axios.get("/users/?role=employee"), // or your endpoint for "employees/artists"
-        axios.get("/clientprofile/"),       // or wherever you get a list of all clients
+        axios.get("/clients"),       // or wherever you get a list of all clients
         axios.get("/services/"),
       ]);
 
@@ -251,6 +251,25 @@ const AppointmentCalendarPage = () => {
     fetchAppointments();
   };
 
+
+  function FormatsAgendaTimeRangeFormats() {
+    function getMinTime() {
+      const min = new Date();
+      min.setHours(8, 0, 0, 0);
+      return min;
+    }
+
+    function getMaxTime() {
+      const max = new Date();
+      max.setHours(18, 0, 0, 0);
+      return max;
+    }
+    return { min: getMinTime(), max: getMaxTime() };
+  }
+
+  const timeFormats = FormatsAgendaTimeRangeFormats();
+
+
   // -------------------------------------------------
   // Render
   // -------------------------------------------------
@@ -263,6 +282,8 @@ const AppointmentCalendarPage = () => {
       <Calendar
         localizer={localizer}
         events={appointments}
+        min={timeFormats.min}
+        max={timeFormats.max}
         startAccessor="start"
         endAccessor="end"
         selectable
