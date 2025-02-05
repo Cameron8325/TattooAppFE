@@ -1,3 +1,4 @@
+// src/components/adminDash/NotificationsPanel.js
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -11,57 +12,71 @@ import {
   Paper,
   Button,
 } from "@mui/material";
-
-const mockNotifications = [
-  {
-    id: 1,
-    employee: "John Doe",
-    action: "Requested schedule change",
-    timestamp: "2025-01-28T10:00:00Z",
-    status: "pending",
-  },
-  {
-    id: 2,
-    employee: "Jane Smith",
-    action: "Canceled appointment",
-    timestamp: "2025-01-28T09:30:00Z",
-    status: "approved",
-  },
-  {
-    id: 3,
-    employee: "Sam Wilson",
-    action: "Updated service details",
-    timestamp: "2025-01-27T16:45:00Z",
-    status: "denied",
-  },
-];
+import axios from "../../services/axios"; // or your path
 
 const NotificationsPanel = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      // GET /recent-activity/
+      const { data } = await axios.get("/recent-activity/");
+      /*
+        data = [
+          {
+            "id": 1,
+            "employee": <employee_id or object>,
+            "action": "created"|"updated"|"pending_approval",
+            "timestamp": "...",
+            "status": "pending"|"approved"|"denied"
+          },
+          ...
+        ]
+      */
+      setNotifications(data);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchNotifications = async () => {
-      setTimeout(() => {
-        setNotifications(mockNotifications); // Simulating API call
-        setLoading(false);
-      }, 1000);
-    };
     fetchNotifications();
   }, []);
 
-  const handleAction = (id, action) => {
-    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
-    console.log(`Notification with ID ${id} ${action} successfully.`);
+  const handleApprove = async (id) => {
+    try {
+      await axios.post(`/approve-notification/${id}/`);
+      alert("Notification approved!");
+      // Remove from list or refetch
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error approving notification:", err);
+      alert("Error approving notification.");
+    }
+  };
+
+  const handleDecline = async (id) => {
+    try {
+      await axios.post(`/decline-notification/${id}/`);
+      alert("Notification declined!");
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error declining notification:", err);
+      alert("Error declining notification.");
+    }
   };
 
   if (loading) {
-    return <Typography>Loading...</Typography>;
+    return <Typography>Loading notifications...</Typography>;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Notifications
       </Typography>
       {notifications.length === 0 ? (
@@ -75,7 +90,7 @@ const NotificationsPanel = () => {
                 <TableCell>Action</TableCell>
                 <TableCell>Timestamp</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>Manage</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -88,23 +103,30 @@ const NotificationsPanel = () => {
                   </TableCell>
                   <TableCell>{notification.status}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={() => handleAction(notification.id, "approve")}
-                      sx={{ mr: 1 }}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      onClick={() => handleAction(notification.id, "decline")}
-                    >
-                      Decline
-                    </Button>
+                    {notification.status === "pending" && (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => handleApprove(notification.id)}
+                          sx={{ mr: 1 }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => handleDecline(notification.id)}
+                        >
+                          Decline
+                        </Button>
+                      </>
+                    )}
+                    {notification.status !== "pending" && (
+                      <Typography>{notification.status.toUpperCase()}</Typography>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

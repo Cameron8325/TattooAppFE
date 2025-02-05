@@ -1,143 +1,380 @@
-import React, { useState, useEffect, useRef } from "react";
-import Calendar from "@toast-ui/calendar";
-import "@toast-ui/calendar/dist/toastui-calendar.min.css";
+import React, { useState, useEffect } from "react";
+import { Calendar, momentLocalizer } from "react-big-calendar";
+import moment from "moment";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Typography,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Box,
+} from "@mui/material";
+
 import axios from "../services/axios";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography } from "@mui/material";
+import { getUser } from "../services/authService";
 
-const CalendarPage = () => {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedDateTime, setSelectedDateTime] = useState(null);
-  const [newAppointment, setNewAppointment] = useState({ clientId: "", artistId: "", serviceId: "", notes: "" });
+// We use moment for the localizer
+const localizer = momentLocalizer(moment);
 
-  const calendarRef = useRef(null);
-  const calendarContainerRef = useRef(null); // 📌 Reference to the container div
+const AppointmentCalendarPage = () => {
+  // -------------------------------------------------
+  // State
+  // -------------------------------------------------
+  const [currentUser, setCurrentUser] = useState(null);
+  const [appointments, setAppointments] = useState([]);
+  const [artists, setArtists] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [services, setServices] = useState([]);
 
-  // 📌 Move fetchAppointments OUTSIDE of useEffect
+  // For the create/edit modal
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null); // if editing
+  const [formData, setFormData] = useState({
+    client: "",
+    artist: "",
+    service: "",
+    date: "",
+    startTime: "",
+    endTime: "",
+    notes: "",
+  });
+
+  // -------------------------------------------------
+  // Fetch current user
+  // -------------------------------------------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await getUser();
+        setCurrentUser(data); // e.g. { id, username, role }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      }
+    })();
+  }, []);
+
+  // -------------------------------------------------
+  // Fetch appointments
+  // -------------------------------------------------
   const fetchAppointments = async () => {
     try {
-      const response = await axios.get("/appointments/");
-      const events = response.data.map((appointment) => ({
-        id: appointment.id.toString(),
-        calendarId: "1", // Required by ToastUI
-        title: `${appointment.client.first_name} ${appointment.client.last_name}`,
-        category: "time",
-        start: `${appointment.date}T${appointment.time}`,
-        end: `${appointment.date}T${appointment.time}`,
-        status: appointment.status,
-      }));
+      const { data } = await axios.get("/appointments/");
+      /*
+        "data" is an array of appointments:
+        {
+          id,
+          client: {...} or null,
+          artist: {...} or null,
+          service,
+          date: "YYYY-MM-DD",
+          time: "HH:mm:ss",
+          status: "pending"|"confirmed"|"canceled"...
+          notes,
+          requires_approval
+        }
+      */
+      const events = data.map((appt) => {
+        const start = moment(`${appt.date}T${appt.time}`).toDate();
+        // +1 hour for demonstration or you can do a real "end_time" if you store it
+        const end = moment(start).add(1, "hour").toDate();
 
-      calendarRef.current?.clear();
-      calendarRef.current?.createEvents(events);
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
+        return {
+          id: appt.id,
+          title: `${appt.client?.first_name ?? "Unknown"} (${appt.status})`,
+          start,
+          end,
+          status: appt.status,
+          extendedAppt: appt, // store entire object
+        };
+      });
+      setAppointments(events);
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
     }
   };
 
+  // -------------------------------------------------
+  // Fetch dropdown data for client, artist, services
+  // -------------------------------------------------
+  const fetchDropdownData = async () => {
+    try {
+      // For example:
+      // /users/?role=employee => all artists
+      // /clientprofiles/ => all clients
+      // /services/
+      const [artistsRes, clientsRes, servicesRes] = await Promise.all([
+        axios.get("/users/?role=employee"), // or your endpoint for "employees/artists"
+        axios.get("/clientprofile/"),       // or wherever you get a list of all clients
+        axios.get("/services/"),
+      ]);
+
+      setArtists(artistsRes.data);
+      setClients(clientsRes.data);
+      setServices(servicesRes.data);
+    } catch (err) {
+      console.error("Error fetching dropdown data:", err);
+    }
+  };
+
+  // -------------------------------------------------
+  // Load data on mount
+  // -------------------------------------------------
   useEffect(() => {
-    if (!calendarContainerRef.current) return;
-
-    // Initialize Calendar
-    calendarRef.current = new Calendar(calendarContainerRef.current, {
-      defaultView: "month",
-      useDetailPopup: true,
-      useCreationPopup: false,
-      taskView: false,
-      template: {
-        time: (schedule) => `${schedule.title}`,
-      },
-      usageStatistics: false,
-    });
-
-    fetchAppointments(); // ✅ Now fetchAppointments is accessible here!
-
-    // 📌 Handle empty slot clicks (for creating appointments)
-    calendarRef.current.on("selectDateTime", (event) => {
-      setSelectedDateTime(event.start);
-      setShowCreateModal(true);
-    });
-
-    return () => {
-      calendarRef.current.destroy();
-    };
+    fetchAppointments();
+    fetchDropdownData();
   }, []);
 
-  // ✅ Function to submit a new appointment
-  const handleSubmitAppointment = async () => {
-    if (!selectedDateTime || !newAppointment.clientId || !newAppointment.artistId || !newAppointment.serviceId) {
-      alert("⚠️ Please fill in all required fields.");
+  // -------------------------------------------------
+  // Big Calendar Handlers
+  // -------------------------------------------------
+  // Called when selecting an empty slot => create new
+  const handleSelectSlot = ({ start, end }) => {
+    setSelectedEvent(null);
+
+    setFormData({
+      client: "",
+      artist: currentUser?.role === "admin" ? "" : currentUser?.id || "", // If employee, auto-assign themselves
+      service: "",
+      date: moment(start).format("YYYY-MM-DD"),
+      startTime: moment(start).format("HH:mm"),
+      endTime: moment(end).format("HH:mm"),
+      notes: "",
+    });
+    setOpenModal(true);
+  };
+
+  // Called when selecting an existing event => edit
+  const handleSelectEvent = (event) => {
+    setSelectedEvent(event);
+    const appt = event.extendedAppt;
+
+    setFormData({
+      client: appt.client?.id || "",
+      artist: appt.artist?.id || "",
+      service: appt.service || "",
+      date: appt.date,
+      startTime: appt.time.slice(0, 5), // "HH:mm"
+      endTime: moment(`${appt.date}T${appt.time}`)
+        .add(1, "hour")
+        .format("HH:mm"), // demonstration
+      notes: appt.notes || "",
+    });
+    setOpenModal(true);
+  };
+
+  // Color-code event
+  const eventPropGetter = (event) => {
+    let backgroundColor = "#9e9e9e"; // default grey
+    if (event.status === "confirmed") backgroundColor = "#4caf50";
+    if (event.status === "pending") backgroundColor = "#ffc107";
+    if (event.status === "canceled") backgroundColor = "#f44336";
+    return { style: { backgroundColor } };
+  };
+
+  // -------------------------------------------------
+  // Modal Logic
+  // -------------------------------------------------
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setSelectedEvent(null);
+  };
+
+  const handleSaveAppointment = async () => {
+    // Basic validation
+    if (!formData.client || !formData.artist || !formData.service) {
+      alert("Client, Artist, and Service are required.");
+      return;
+    }
+    // If employee, ensure formData.artist == their ID unless admin
+    if (currentUser?.role === "employee" && formData.artist !== currentUser?.id.toString()) {
+      alert("Employees can only create/edit their own appointments.");
       return;
     }
 
-    const formattedDate = selectedDateTime.toISOString().split("T")[0];
-    const formattedTime = selectedDateTime.toISOString().split("T")[1].substring(0, 8);
+    // Combine date+time
+    const dateStr = formData.date; // "YYYY-MM-DD"
+    const timeStr = formData.startTime + ":00"; // "HH:mm:ss"
 
-    try {
-      await axios.post("/appointments/", {
-        clientId: newAppointment.clientId,
-        artistId: newAppointment.artistId,
-        serviceId: newAppointment.serviceId,
-        date: formattedDate,
-        time: formattedTime,
-        status: "pending",
-        notes: newAppointment.notes,
-      });
-
-      alert("✅ Appointment created successfully!");
-      setShowCreateModal(false);
-
-      // 📌 Refresh events after creation
-      fetchAppointments(); // ✅ Now fetchAppointments is available here!
-    } catch (error) {
-      console.error("❌ Error creating appointment:", error);
+    // If editing existing event
+    if (selectedEvent) {
+      try {
+        await axios.patch(`/appointments/${selectedEvent.id}/`, {
+          client_id: formData.client,
+          artist_id: formData.artist,
+          service: formData.service,
+          date: dateStr,
+          time: timeStr,
+          notes: formData.notes,
+        });
+        alert("Appointment updated!");
+      } catch (err) {
+        console.error("Error updating appointment:", err);
+        if (err.response?.data?.error) {
+          alert(err.response.data.error);
+        } else {
+          alert("Error updating appointment. Check console for details.");
+        }
+      }
+    } else {
+      // Creating new
+      const status = currentUser?.role === "admin" ? "confirmed" : "pending";
+      try {
+        await axios.post("/appointments/", {
+          client_id: formData.client,
+          artist_id: formData.artist,
+          service: formData.service,
+          date: dateStr,
+          time: timeStr,
+          status,
+          notes: formData.notes,
+        });
+        alert("Appointment created!");
+      } catch (err) {
+        console.error("Error creating appointment:", err);
+        if (err.response?.data?.error) {
+          alert(err.response.data.error);
+        } else {
+          alert("Error creating appointment. Check console for details.");
+        }
+      }
     }
+
+    // Refresh
+    handleCloseModal();
+    fetchAppointments();
   };
 
+  // -------------------------------------------------
+  // Render
+  // -------------------------------------------------
   return (
-    <div>
-      <Typography variant="h4" sx={{ marginBottom: 2 }}>📅 Appointment Calendar</Typography>
+    <Box p={2}>
+      <Typography variant="h4" gutterBottom>
+        Appointment Calendar
+      </Typography>
 
-      {/* 📌 The div where ToastUI Calendar is mounted */}
-      <div ref={calendarContainerRef} style={{ height: "800px" }} />
+      <Calendar
+        localizer={localizer}
+        events={appointments}
+        startAccessor="start"
+        endAccessor="end"
+        selectable
+        onSelectSlot={handleSelectSlot}
+        onSelectEvent={handleSelectEvent}
+        eventPropGetter={eventPropGetter}
+        views={["month", "week", "day"]}
+        defaultView="week"
+        style={{ height: 800 }}
+      />
 
-      {/* ✅ Create Appointment Modal */}
-      <Dialog open={showCreateModal} onClose={() => setShowCreateModal(false)}>
-        <DialogTitle>📅 Create New Appointment</DialogTitle>
+      {/* CREATE/EDIT Modal */}
+      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {selectedEvent ? "Edit Appointment" : "Create Appointment"}
+        </DialogTitle>
         <DialogContent>
+          {/* client, artist, service -> dropdowns */}
+          <Box display="flex" gap={2} mb={2}>
+            <FormControl fullWidth>
+              <InputLabel id="client-select-label">Client</InputLabel>
+              <Select
+                labelId="client-select-label"
+                label="Client"
+                value={formData.client}
+                onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+              >
+                {clients.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.first_name} {c.last_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth disabled={currentUser?.role === "employee"}>
+              <InputLabel id="artist-select-label">Artist</InputLabel>
+              <Select
+                labelId="artist-select-label"
+                label="Artist"
+                value={formData.artist}
+                onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
+              >
+                {artists.map((a) => (
+                  <MenuItem key={a.id} value={a.id}>
+                    {a.username}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="service-select-label">Service</InputLabel>
+            <Select
+              labelId="service-select-label"
+              label="Service"
+              value={formData.service}
+              onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+            >
+              {services.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name} — ${s.price}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Box display="flex" gap={2} my={2}>
+            <TextField
+              label="Date"
+              type="date"
+              fullWidth
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            />
+            <TextField
+              label="Start Time"
+              type="time"
+              fullWidth
+              value={formData.startTime}
+              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+            />
+            <TextField
+              label="End Time"
+              type="time"
+              fullWidth
+              value={formData.endTime}
+              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+            />
+          </Box>
+
           <TextField
-            label="Client ID"
+            label="Notes"
+            multiline
+            rows={2}
             fullWidth
-            margin="normal"
-            onChange={(e) => setNewAppointment({ ...newAppointment, clientId: e.target.value })}
-            required
-          />
-          <TextField
-            label="Artist ID"
-            fullWidth
-            margin="normal"
-            onChange={(e) => setNewAppointment({ ...newAppointment, artistId: e.target.value })}
-            required
-          />
-          <TextField
-            label="Service ID"
-            fullWidth
-            margin="normal"
-            onChange={(e) => setNewAppointment({ ...newAppointment, serviceId: e.target.value })}
-            required
-          />
-          <TextField
-            label="Notes (Optional)"
-            fullWidth
-            margin="normal"
-            onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowCreateModal(false)} color="secondary">Cancel</Button>
-          <Button onClick={handleSubmitAppointment} color="primary">Create Appointment</Button>
+          <Button onClick={handleCloseModal} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleSaveAppointment} color="primary">
+            {selectedEvent ? "Save Changes" : "Create"}
+          </Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </Box>
   );
 };
 
-export default CalendarPage;
+export default AppointmentCalendarPage;
