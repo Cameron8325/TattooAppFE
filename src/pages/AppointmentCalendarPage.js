@@ -15,7 +15,11 @@ import {
   FormControl,
   InputLabel,
   Box,
+  Grid,
 } from "@mui/material";
+
+// 1) Import Autocomplete
+import Autocomplete from "@mui/material/Autocomplete";
 
 import axios from "../services/axios";
 import { getUser } from "../services/authService";
@@ -30,20 +34,41 @@ const AppointmentCalendarPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [artists, setArtists] = useState([]);
-  const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
 
   // For the create/edit modal
   const [openModal, setOpenModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null); // if editing
+
+  // Appointment form fields (excluding the client logic)
   const [formData, setFormData] = useState({
-    client: "",
     artist: "",
     service: "",
     date: "",
     startTime: "",
     endTime: "",
     notes: "",
+  });
+
+  // -------------------------------------
+  // Client search-related states
+  // -------------------------------------
+  // For searching existing clients
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  
+  // Whether we are creating a new client
+  const [isNewClient, setIsNewClient] = useState(false);
+  
+  // If picking an existing client, store the selected client object here
+  const [selectedClient, setSelectedClient] = useState(null);
+  
+  // If creating a new client, store their data here
+  const [newClientData, setNewClientData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
   });
 
   // -------------------------------------------------
@@ -75,7 +100,7 @@ const AppointmentCalendarPage = () => {
           service,
           date: "YYYY-MM-DD",
           time: "HH:mm:ss",
-          status: "pending"|"confirmed"|"canceled"...
+          status: "pending"|"confirmed"|"canceled"...,
           notes,
           requires_approval
         }
@@ -91,7 +116,7 @@ const AppointmentCalendarPage = () => {
           start,
           end,
           status: appt.status,
-          extendedAppt: appt, // store entire object
+          extendedAppt: appt, // store the entire object
         };
       });
       setAppointments(events);
@@ -101,38 +126,26 @@ const AppointmentCalendarPage = () => {
   };
 
   // -------------------------------------------------
-  // Fetch dropdown data for client, artist, services
+  // Fetch dropdown data for artists, services
   // -------------------------------------------------
   const fetchDropdownData = async () => {
     try {
-      // Fetch data for artists, clients, and services concurrently using Promise.allSettled()
-      // This ensures that if one request fails, the others still execute.
       console.log("🔄 Fetching dropdown data...");
-      const [artistsRes, clientsRes, servicesRes] = await Promise.allSettled([
+      const [artistsRes, servicesRes] = await Promise.allSettled([
         axios.get("/users/?role=employee").catch(() => ({ data: [] })), // Fetch artists (employees)
-        axios.get("/clients").catch(() => ({ data: [] })), // Fetch clients
         axios.get("/services/").catch(() => ({ data: [] })), // Fetch services
       ]);
 
-      console.log("Services: ", servicesRes);
-      console.log("Clients: ", clientsRes);
-      console.log("Artists: ", artistsRes);
-  
       // Set artists state only if the response contains a valid array
       setArtists(Array.isArray(artistsRes.value?.data) ? artistsRes.value.data : []);
-  
-      // Set clients state only if the response contains a valid array
-      setClients(Array.isArray(clientsRes.value?.data) ? clientsRes.value.data : []);
-  
+
       // Set services state only if the response contains a valid array
       setServices(Array.isArray(servicesRes.value?.data) ? servicesRes.value.data : []);
-      
+
     } catch (err) {
-      // Log errors if the entire function fails (unexpected issues)
       console.error("Error in fetchDropdownData:", err);
     }
   };
-  
 
   // -------------------------------------------------
   // Load data on mount
@@ -150,14 +163,24 @@ const AppointmentCalendarPage = () => {
     setSelectedEvent(null);
 
     setFormData({
-      client: "",
-      artist: currentUser?.role === "admin" ? "" : currentUser?.id || "", // If employee, auto-assign themselves
+      artist: currentUser?.role === "admin" ? "" : currentUser?.id || "",
       service: "",
       date: moment(start).format("YYYY-MM-DD"),
       startTime: moment(start).format("HH:mm"),
       endTime: moment(end).format("HH:mm"),
       notes: "",
     });
+    
+    // Reset client states for a brand-new appointment
+    setIsNewClient(false);
+    setSelectedClient(null);
+    setNewClientData({
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+    });
+
     setOpenModal(true);
   };
 
@@ -166,8 +189,11 @@ const AppointmentCalendarPage = () => {
     setSelectedEvent(event);
     const appt = event.extendedAppt;
 
+    // If we have an existing client, place it in selectedClient
+    setIsNewClient(false);
+    setSelectedClient(appt.client || null);
+    
     setFormData({
-      client: appt.client?.id || "",
       artist: appt.artist?.id || "",
       service: appt.service || "",
       date: appt.date,
@@ -177,6 +203,15 @@ const AppointmentCalendarPage = () => {
         .format("HH:mm"), // demonstration
       notes: appt.notes || "",
     });
+
+    // Clear out newClientData
+    setNewClientData({
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+    });
+
     setOpenModal(true);
   };
 
@@ -190,6 +225,25 @@ const AppointmentCalendarPage = () => {
   };
 
   // -------------------------------------------------
+  // Search for existing clients as user types
+  // -------------------------------------------------
+  useEffect(() => {
+    if (searchQuery.length >= 2) {
+      axios
+        .get(`/clients/?search=${encodeURIComponent(searchQuery)}`)
+        .then((res) => {
+          setSearchResults(res.data); // array of matching client objects
+        })
+        .catch((err) => {
+          console.error("Error searching clients:", err);
+          setSearchResults([]);
+        });
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
+
+  // -------------------------------------------------
   // Modal Logic
   // -------------------------------------------------
   const handleCloseModal = () => {
@@ -199,77 +253,67 @@ const AppointmentCalendarPage = () => {
 
   const handleSaveAppointment = async () => {
     // Basic validation
-    if (!formData.client || !formData.artist || !formData.service) {
-      alert("Client, Artist, and Service are required.");
+    if (!isNewClient && !selectedClient) {
+      alert("Please select an existing client or create a new client.");
       return;
     }
-    // If employee, ensure formData.artist == their ID unless admin
-    if (currentUser?.role === "employee" && formData.artist !== currentUser?.id.toString()) {
+    if (!formData.artist || !formData.service) {
+      alert("Artist and Service are required.");
+      return;
+    }
+
+    // If employee, ensure they can only create/edit their own appointments
+    if (
+      currentUser?.role === "employee" &&
+      formData.artist !== currentUser?.id.toString()
+    ) {
       alert("Employees can only create/edit their own appointments.");
       return;
     }
 
-    // Combine date+time
-    const dateStr = formData.date; // "YYYY-MM-DD"
-    const timeStr = formData.startTime + ":00"; // "HH:mm:ss"
+    const dateStr = formData.date;
+    const timeStr = formData.startTime + ":00";
+    const status = currentUser?.role === "admin" ? "confirmed" : "pending";
 
-    // If editing existing event
-    if (selectedEvent) {
-      try {
-        await axios.patch(`/appointments/${selectedEvent.id}/`, {
-          client_id: formData.client,
-          artist_id: formData.artist,
-          service: formData.service,
-          date: dateStr,
-          time: timeStr,
-          notes: formData.notes,
-        });
+    // Prepare the data to send
+    const payload = {
+      client_id: isNewClient ? undefined : selectedClient?.id,
+      new_client: isNewClient ? newClientData : undefined,
+      artist_id: formData.artist,
+      service: formData.service,
+      date: dateStr,
+      time: timeStr,
+      notes: formData.notes,
+      status,
+    };
+
+    try {
+      if (selectedEvent) {
+        // Updating an existing appointment
+        await axios.patch(`/appointments/${selectedEvent.id}/`, payload);
         alert("Appointment updated!");
-      } catch (err) {
-        console.error("Error updating appointment:", err);
-        if (err.response?.data?.error) {
-          alert(err.response.data.error);
-        } else {
-          alert("Error updating appointment. Check console for details.");
-        }
-      }
-    } else {
-      // Creating new
-      const status = currentUser?.role === "admin" ? "confirmed" : "pending";
-      try {
-        await axios.post("/appointments/", {
-          client_id: formData.client,
-          artist_id: formData.artist,
-          service: formData.service,
-          date: dateStr,
-          time: timeStr,
-          status,
-          notes: formData.notes,
-        });
+      } else {
+        // Creating a new appointment
+        await axios.post("/appointments/", payload);
         alert("Appointment created!");
-      } catch (err) {
-        console.error("Error creating appointment:", err);
-        if (err.response?.data?.error) {
-          alert(err.response.data.error);
-        } else {
-          alert("Error creating appointment. Check console for details.");
-        }
       }
+      handleCloseModal();
+      fetchAppointments();
+    } catch (err) {
+      console.error("Error saving appointment:", err);
+      alert(err.response?.data?.error || "Error saving appointment.");
     }
-
-    // Refresh
-    handleCloseModal();
-    fetchAppointments();
   };
 
-
+  // -------------------------------------------------
+  // Time Range for the Calendar
+  // -------------------------------------------------
   function FormatsAgendaTimeRangeFormats() {
     function getMinTime() {
       const min = new Date();
       min.setHours(8, 0, 0, 0);
       return min;
     }
-
     function getMaxTime() {
       const max = new Date();
       max.setHours(18, 0, 0, 0);
@@ -277,9 +321,7 @@ const AppointmentCalendarPage = () => {
     }
     return { min: getMinTime(), max: getMaxTime() };
   }
-
   const timeFormats = FormatsAgendaTimeRangeFormats();
-
 
   // -------------------------------------------------
   // Render
@@ -306,96 +348,212 @@ const AppointmentCalendarPage = () => {
         style={{ height: 800 }}
       />
 
-      {/* CREATE/EDIT Modal */}
+      {/* CREATE/EDIT MODAL */}
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
         <DialogTitle>
           {selectedEvent ? "Edit Appointment" : "Create Appointment"}
         </DialogTitle>
+
         <DialogContent>
-          {/* client, artist, service -> dropdowns */}
-          <Box display="flex" gap={2} mb={2}>
-            <FormControl fullWidth>
-              <InputLabel id="client-select-label">Client</InputLabel>
-              <Select
-                labelId="client-select-label"
-                label="Client"
-                value={formData.client}
-                onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+          <Grid container spacing={2}>
+            {/* 1) Autocomplete or New Client Toggle */}
+            {!isNewClient && (
+              <Grid item xs={12}>
+                <Autocomplete
+                  value={selectedClient}
+                  onChange={(event, newValue) => {
+                    setSelectedClient(newValue);
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setSearchQuery(newInputValue);
+                  }}
+                  options={searchResults}
+                  getOptionLabel={(option) =>
+                    `${option.first_name} ${option.last_name} (${option.email})`
+                  }
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Search or Select Client"
+                      variant="outlined"
+                    />
+                  )}
+                />
+              </Grid>
+            )}
+
+            {/* Toggle Button */}
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setIsNewClient(!isNewClient);
+                  if (!isNewClient) {
+                    // If we are switching to "new client", clear out the old data
+                    setSelectedClient(null);
+                  } else {
+                    // If switching back to existing, clear newClientData
+                    setNewClientData({
+                      first_name: "",
+                      last_name: "",
+                      email: "",
+                      phone: "",
+                    });
+                  }
+                }}
               >
-                {clients.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.first_name} {c.last_name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                {isNewClient ? "Use Existing Client" : "Create New Client"}
+              </Button>
+            </Grid>
 
-            <FormControl fullWidth disabled={currentUser?.role === "employee"}>
-              <InputLabel id="artist-select-label">Artist</InputLabel>
-              <Select
-                labelId="artist-select-label"
-                label="Artist"
-                value={formData.artist}
-                onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
-              >
-                {artists.map((a) => (
-                  <MenuItem key={a.id} value={a.id}>
-                    {a.username}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
+            {/* 2) New Client Fields (Only Shows When isNewClient = true) */}
+            {isNewClient && (
+              <>
+                <Grid item xs={6}>
+                  <TextField
+                    label="First Name"
+                    fullWidth
+                    value={newClientData.first_name}
+                    onChange={(e) =>
+                      setNewClientData({
+                        ...newClientData,
+                        first_name: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Last Name"
+                    fullWidth
+                    value={newClientData.last_name}
+                    onChange={(e) =>
+                      setNewClientData({
+                        ...newClientData,
+                        last_name: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Email"
+                    fullWidth
+                    value={newClientData.email}
+                    onChange={(e) =>
+                      setNewClientData({
+                        ...newClientData,
+                        email: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Phone"
+                    fullWidth
+                    value={newClientData.phone}
+                    onChange={(e) =>
+                      setNewClientData({
+                        ...newClientData,
+                        phone: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+              </>
+            )}
 
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="service-select-label">Service</InputLabel>
-            <Select
-              labelId="service-select-label"
-              label="Service"
-              value={formData.service}
-              onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-            >
-              {services.map((s) => (
-                <MenuItem key={s.id} value={s.id}>
-                  {s.name_display} — ${s.price}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            {/* 3) Artist Selection */}
+            <Grid item xs={12}>
+              <FormControl fullWidth disabled={currentUser?.role === "employee"}>
+                <InputLabel>Artist</InputLabel>
+                <Select
+                  value={formData.artist}
+                  onChange={(e) =>
+                    setFormData({ ...formData, artist: e.target.value })
+                  }
+                >
+                  {artists.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.username}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-          <Box display="flex" gap={2} my={2}>
-            <TextField
-              label="Date"
-              type="date"
-              fullWidth
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            />
-            <TextField
-              label="Start Time"
-              type="time"
-              fullWidth
-              value={formData.startTime}
-              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-            />
-            <TextField
-              label="End Time"
-              type="time"
-              fullWidth
-              value={formData.endTime}
-              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-            />
-          </Box>
+            {/* 4) Service Selection */}
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Service</InputLabel>
+                <Select
+                  value={formData.service}
+                  onChange={(e) =>
+                    setFormData({ ...formData, service: e.target.value })
+                  }
+                >
+                  {services.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.name_display} — ${s.price}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-          <TextField
-            label="Notes"
-            multiline
-            rows={2}
-            fullWidth
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          />
+            {/* 5) Date & Time */}
+            <Grid item xs={4}>
+              <TextField
+                label="Date"
+                type="date"
+                fullWidth
+                value={formData.date}
+                onChange={(e) =>
+                  setFormData({ ...formData, date: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                label="Start Time"
+                type="time"
+                fullWidth
+                value={formData.startTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, startTime: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                label="End Time"
+                type="time"
+                fullWidth
+                value={formData.endTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, endTime: e.target.value })
+                }
+              />
+            </Grid>
+
+            {/* 6) Notes */}
+            <Grid item xs={12}>
+              <TextField
+                label="Notes"
+                multiline
+                rows={2}
+                fullWidth
+                value={formData.notes}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
+
         <DialogActions>
           <Button onClick={handleCloseModal} color="secondary">
             Cancel
