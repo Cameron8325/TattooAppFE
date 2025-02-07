@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { Grid, Paper, Typography, Box } from '@mui/material';
 import { getUser } from '../services/authService';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+
 import AppointmentsChart from '../components/adminDash/AppointmentsChart';
 import KeyMetricsCard from '../components/adminDash/KeyMetricsCard';
 import ArtistPerformanceChart from '../components/adminDash/ArtistPerformanceChart';
@@ -11,7 +12,8 @@ import AppointmentOverview from '../components/adminDash/AppointmentOverview';
 
 const AdminDashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
-  const history = useHistory();
+ const navigate = useNavigate();
+
 
   useEffect(() => {
     (async () => {
@@ -20,14 +22,14 @@ const AdminDashboard = () => {
         setCurrentUser(data);
         if (data.role !== 'admin') {
           // Not an admin => redirect or show 403
-          history.push('/'); 
+          navigate('/'); 
         }
       } catch (err) {
         console.error('Error fetching user:', err);
-        history.push('/'); 
+        navigate('/'); 
       }
     })();
-  }, [history]);
+  }, [navigate]);
 
   if (!currentUser) {
     return <Typography>Loading...</Typography>;

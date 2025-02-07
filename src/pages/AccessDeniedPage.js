@@ -1,14 +1,15 @@
 import React from 'react';
 import { Box, Typography, Button } from '@mui/material';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+
 
 const AccessDeniedPage = () => {
-    const history = useHistory();
-
+    const navigate = useNavigate();
+    
     const handleGoBack = () => {
-        history.push('/'); // Redirect to homepage or login
+        navigate('/'); // ✅ Fix navigation
     };
-
+    
     return (
         <Box
             sx={{

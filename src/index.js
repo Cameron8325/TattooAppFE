@@ -1,12 +1,10 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import App from './App';
-import theme from './theme';
+import React from "react";
+import ReactDOM from "react-dom/client"; // ✅ Use React 18 API
+import App from "./App";
 
-ReactDOM.render(
-    <ThemeProvider theme={theme}>
-        <App />
-    </ThemeProvider>,
-    document.getElementById('root')
+const root = ReactDOM.createRoot(document.getElementById("root")); // ✅ Fix
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 );

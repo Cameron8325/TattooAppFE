@@ -1,6 +1,7 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import Navbar from "./components/navbar/Navbar"; // Import Navbar
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext"; // Import AuthContext
+import Navbar from "./components/navbar/Navbar";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
@@ -13,21 +14,23 @@ import BillingReportsPage from "./pages/BillingReportsPage";
 
 const App = () => {
   return (
-    <Router>
-      <Navbar />
-      <Switch>
-        <Route exact path="/login" component={LoginPage} />
-        <Route exact path="/register" component={RegisterPage} />
-        <Route exact path="/appointments" component={AppointmentsPage} />
-        <Route exact path="/dashboard" component={AdminDashboard} />
-        <Route exact path="/user-management" component={UserManagementPage} />
-        <Route exact path="/employee-dashboard" component={EmployeeDashboard} />
-        <Route exact path="/appointment-calendar" component={AppointmentCalendarPage} />
-        <Route exact path="/billing-reports" component={BillingReportsPage} />
-        <Route exact path="/access-denied" component={AccessDeniedPage} />
-        <Route path="/" render={() => <h1>Welcome to the Tattoo Appointment App</h1>} />
-      </Switch>
-    </Router>
+    <AuthProvider> {/* ✅ Wrap everything inside AuthProvider */}
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/appointments" element={<AppointmentsPage />} />
+          <Route path="/dashboard" element={<AdminDashboard />} />
+          <Route path="/user-management" element={<UserManagementPage />} />
+          <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+          <Route path="/appointment-calendar" element={<AppointmentCalendarPage />} />
+          <Route path="/billing-reports" element={<BillingReportsPage />} />
+          <Route path="/access-denied" element={<AccessDeniedPage />} />
+          <Route path="/" element={<h1>Welcome to the Tattoo Appointment App</h1>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 

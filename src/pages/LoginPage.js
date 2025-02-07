@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { login, getUser } from "../services/authService";
-import { useHistory } from "react-router-dom"; // ✅ Replacing useNavigate with useHistory
+import { useNavigate } from "react-router-dom"; // ✅ Replacing useNavigate with useHistory
 import { Container, TextField, Button, Typography, Box, Alert } from "@mui/material";
 
 const LoginPage = () => {
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
-  const history = useHistory(); // ✅ Replacing useNavigate with useHistory
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,7 +14,7 @@ const LoginPage = () => {
         await login(credentials); // ✅ No need to handle tokens
         const user = await getUser(); // ✅ Fetch user from session
         if (user.data) {
-            history.push("/dashboard"); // ✅ Redirect after successful login
+            navigate("/dashboard"); // ✅ Redirect after successful login
         }
     } catch (error) {
         setError("Invalid username or password.");

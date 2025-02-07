@@ -1,20 +1,20 @@
 import React, { useState } from "react";
 import { register } from "../services/authService";
-import { useHistory } from "react-router-dom"; // ✅ Replacing useNavigate with useHistory
+import { useNavigate } from "react-router-dom";
 import { Container, TextField, Button, Typography, Box, Alert } from "@mui/material";
 
 const RegisterPage = () => {
   const [user, setUser] = useState({ username: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const history = useHistory(); // ✅ Replacing useNavigate with useHistory
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
         await register(user);
         setSuccess(true);
-        setTimeout(() => history.push("/login"), 1500); // ✅ Redirect after success
+        setTimeout(() => navigate("/login"), 1500); // ✅ Fix navigation
     } catch (error) {
         setError("Registration failed. Try a different username or email.");
     }
