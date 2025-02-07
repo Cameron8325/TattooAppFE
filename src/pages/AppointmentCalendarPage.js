@@ -105,23 +105,34 @@ const AppointmentCalendarPage = () => {
   // -------------------------------------------------
   const fetchDropdownData = async () => {
     try {
-      // For example:
-      // /users/?role=employee => all artists
-      // /clientprofiles/ => all clients
-      // /services/
-      const [artistsRes, clientsRes, servicesRes] = await Promise.all([
-        axios.get("/users/?role=employee"), // or your endpoint for "employees/artists"
-        axios.get("/clients"),       // or wherever you get a list of all clients
-        axios.get("/services/"),
+      // Fetch data for artists, clients, and services concurrently using Promise.allSettled()
+      // This ensures that if one request fails, the others still execute.
+      console.log("🔄 Fetching dropdown data...");
+      const [artistsRes, clientsRes, servicesRes] = await Promise.allSettled([
+        axios.get("/users/?role=employee").catch(() => ({ data: [] })), // Fetch artists (employees)
+        axios.get("/clients").catch(() => ({ data: [] })), // Fetch clients
+        axios.get("/services/").catch(() => ({ data: [] })), // Fetch services
       ]);
 
-      setArtists(artistsRes.data);
-      setClients(clientsRes.data);
-      setServices(servicesRes.data);
+      console.log("Services: ", servicesRes);
+      console.log("Clients: ", clientsRes);
+      console.log("Artists: ", artistsRes);
+  
+      // Set artists state only if the response contains a valid array
+      setArtists(Array.isArray(artistsRes.value?.data) ? artistsRes.value.data : []);
+  
+      // Set clients state only if the response contains a valid array
+      setClients(Array.isArray(clientsRes.value?.data) ? clientsRes.value.data : []);
+  
+      // Set services state only if the response contains a valid array
+      setServices(Array.isArray(servicesRes.value?.data) ? servicesRes.value.data : []);
+      
     } catch (err) {
-      console.error("Error fetching dropdown data:", err);
+      // Log errors if the entire function fails (unexpected issues)
+      console.error("Error in fetchDropdownData:", err);
     }
   };
+  
 
   // -------------------------------------------------
   // Load data on mount
@@ -346,7 +357,7 @@ const AppointmentCalendarPage = () => {
             >
               {services.map((s) => (
                 <MenuItem key={s.id} value={s.id}>
-                  {s.name} — ${s.price}
+                  {s.name_display} — ${s.price}
                 </MenuItem>
               ))}
             </Select>
