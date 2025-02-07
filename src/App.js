@@ -1,6 +1,5 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext"; // Import AuthContext
 import Navbar from "./components/navbar/Navbar";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -14,7 +13,6 @@ import BillingReportsPage from "./pages/BillingReportsPage";
 
 const App = () => {
   return (
-    <AuthProvider> {/* ✅ Wrap everything inside AuthProvider */}
       <Router>
         <Navbar />
         <Routes>
@@ -30,7 +28,6 @@ const App = () => {
           <Route path="/" element={<h1>Welcome to the Tattoo Appointment App</h1>} />
         </Routes>
       </Router>
-    </AuthProvider>
   );
 };
 
