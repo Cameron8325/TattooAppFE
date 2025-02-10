@@ -44,6 +44,7 @@ const AppointmentCalendarPage = () => {
   const [formData, setFormData] = useState({
     artist: "",
     service: "",
+    price: "",
     date: "",
     startTime: "",
     endTime: "",
@@ -56,13 +57,13 @@ const AppointmentCalendarPage = () => {
   // For searching existing clients
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  
+
   // Whether we are creating a new client
   const [isNewClient, setIsNewClient] = useState(false);
-  
+
   // If picking an existing client, store the selected client object here
   const [selectedClient, setSelectedClient] = useState(null);
-  
+
   // If creating a new client, store their data here
   const [newClientData, setNewClientData] = useState({
     first_name: "",
@@ -170,7 +171,7 @@ const AppointmentCalendarPage = () => {
       endTime: moment(end).format("HH:mm"),
       notes: "",
     });
-    
+
     // Reset client states for a brand-new appointment
     setIsNewClient(false);
     setSelectedClient(null);
@@ -192,10 +193,11 @@ const AppointmentCalendarPage = () => {
     // If we have an existing client, place it in selectedClient
     setIsNewClient(false);
     setSelectedClient(appt.client || null);
-    
+
     setFormData({
       artist: appt.artist?.id || "",
       service: appt.service || "",
+      price: appt.price || "",
       date: appt.date,
       startTime: appt.time.slice(0, 5), // "HH:mm"
       endTime: moment(`${appt.date}T${appt.time}`)
@@ -281,6 +283,7 @@ const AppointmentCalendarPage = () => {
       new_client: isNewClient ? newClientData : undefined,
       artist_id: formData.artist,
       service: formData.service,
+      price: formData.price,
       date: dateStr,
       time: timeStr,
       notes: formData.notes,
@@ -485,23 +488,37 @@ const AppointmentCalendarPage = () => {
             </Grid>
 
             {/* 4) Service Selection */}
-            <Grid item xs={12}>
+            <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Service</InputLabel>
                 <Select
                   value={formData.service}
-                  onChange={(e) =>
-                    setFormData({ ...formData, service: e.target.value })
-                  }
+                  onChange={(e) => {
+                    // Update service selection but keep custom price untouched
+                    setFormData({ ...formData, service: e.target.value });
+                  }}
                 >
                   {services.map((s) => (
                     <MenuItem key={s.id} value={s.id}>
-                      {s.name_display} — ${s.price}
+                      {s.name_display}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
+
+            {/* Custom Price Field */}
+            <Grid item xs={12} md={6} >
+              <TextField
+                label="Price"
+                type="number"
+                fullWidth
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                inputProps={{ min: "0", step: "0.01" }} // Ensure valid price input
+              />
+            </Grid>
+
 
             {/* 5) Date & Time */}
             <Grid item xs={4}>
