@@ -25,7 +25,7 @@ const UserManagementPage = () => {
     const [currentEmployee, setCurrentEmployee] = useState(null); // For edit
 
     useEffect(() => {
-        axios.get('/users/employees/')
+        axios.get('/users/')
             .then((response) => setEmployees(response.data))
             .catch(() => {
                 setEmployees([
@@ -113,7 +113,7 @@ const UserManagementPage = () => {
                                 {employees.map((employee) => (
                                     <TableRow key={employee.id}>
                                         <TableCell>{employee.id}</TableCell>
-                                        <TableCell>{employee.name}</TableCell>
+                                        <TableCell>{employee.full_name}</TableCell>
                                         <TableCell>{employee.email}</TableCell>
                                         <TableCell>{employee.role}</TableCell>
                                         <TableCell>
