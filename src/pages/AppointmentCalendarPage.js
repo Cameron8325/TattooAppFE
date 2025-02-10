@@ -273,7 +273,6 @@ const AppointmentCalendarPage = () => {
       return;
     }
 
-    const dateStr = formData.date;
     const timeStr = formData.startTime + ":00";
     const status = currentUser?.role === "admin" ? "confirmed" : "pending";
 
@@ -284,7 +283,7 @@ const AppointmentCalendarPage = () => {
       artist_id: formData.artist,
       service: formData.service,
       price: formData.price,
-      date: dateStr,
+      date: formData.date,
       time: timeStr,
       notes: formData.notes,
       status,
@@ -513,9 +512,8 @@ const AppointmentCalendarPage = () => {
                 label="Price"
                 type="number"
                 fullWidth
-                value={formData.price}
+                value={String(formData.price)}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                inputProps={{ min: "0", step: "0.01" }} // Ensure valid price input
               />
             </Grid>
 
