@@ -6,7 +6,7 @@ import axios from '../services/axios.js';
 const AppointmentsPage = () => {
     const [appointments, setAppointments] = useState([]);
     const [openModal, setOpenModal] = useState(false);
-    const [currentAppointment, setCurrentAppointment] = useState(null); // For edit
+    const [currentAppointment, setCurrentAppointment] = useState(null);
 
     useEffect(() => {
         axios.get('/appointments/')
@@ -37,7 +37,6 @@ const AppointmentsPage = () => {
         };
 
         if (currentAppointment) {
-            // Update existing appointment
             axios.put(`/appointments/${currentAppointment.id}/`, newAppointment)
                 .then(() => {
                     setAppointments((prev) =>
@@ -47,7 +46,6 @@ const AppointmentsPage = () => {
                     );
                 });
         } else {
-            // Create new appointment
             axios.post('/appointments/', newAppointment)
                 .then((response) => setAppointments((prev) => [...prev, response.data]));
         }
@@ -55,54 +53,61 @@ const AppointmentsPage = () => {
         handleCloseModal();
     };
 
-    const columns = [
-        { field: 'id', headerName: 'ID', width: 70 },
-        { field: 'client', headerName: 'Client', width: 150 },
-        { field: 'artist', headerName: 'Artist', width: 150 },
-        { field: 'service', headerName: 'Service', width: 200 },
-        { field: 'date', headerName: 'Date', width: 150 },
-        { field: 'time', headerName: 'Time', width: 150 },
-        { field: 'status', headerName: 'Status', width: 150 },
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 150,
-            renderCell: (params) => (
-                <div>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleOpenModal(params.row)}
-                        style={{ marginRight: 8 }}
-                    >
-                        Edit
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={() => handleDelete(params.row.id)}
-                    >
-                        Delete
-                    </Button>
-                </div>
-            ),
-        },
-    ];
-
     const handleDelete = (id) => {
         axios.delete(`/appointments/${id}/`).then(() => {
             setAppointments((prev) => prev.filter((item) => item.id !== id));
         });
     };
 
+    const formattedAppointments = appointments.map((appointment) => ({
+        ...appointment,
+        client: appointment.client ? `${appointment.client.first_name} ${appointment.client.last_name}` : 'Unknown',
+        artist: appointment.artist ? appointment.artist.full_name : 'Unknown',
+    }));
+
     return (
         <Box sx={{ height: 400, width: '100%' }}>
             <Button variant="contained" color="primary" onClick={() => handleOpenModal()} style={{ marginBottom: 16 }}>
                 Create Appointment
             </Button>
-            <DataGrid rows={appointments} columns={columns} />
+            
+            <DataGrid 
+                rows={formattedAppointments} 
+                columns={[
+                    { field: 'id', headerName: 'ID', width: 70 },
+                    { field: 'client', headerName: 'Client', width: 150 },
+                    { field: 'artist', headerName: 'Artist', width: 150 },
+                    { field: 'service', headerName: 'Service', width: 200 },
+                    { field: 'date', headerName: 'Date', width: 150 },
+                    { field: 'time', headerName: 'Time', width: 150 },
+                    { field: 'status', headerName: 'Status', width: 150 },
+                    {
+                        field: 'actions',
+                        headerName: 'Actions',
+                        width: 150,
+                        renderCell: (params) => (
+                            <div>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => handleOpenModal(params.row)}
+                                    style={{ marginRight: 8 }}
+                                >
+                                    Edit
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="secondary"
+                                    onClick={() => handleDelete(params.row.id)}
+                                >
+                                    Delete
+                                </Button>
+                            </div>
+                        ),
+                    },
+                ]}
+            />
 
-            {/* Modal for Create/Edit */}
             <Modal open={openModal} onClose={handleCloseModal}>
                 <Box
                     sx={{
