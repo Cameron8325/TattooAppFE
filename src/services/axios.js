@@ -10,7 +10,6 @@ const instance = axios.create({
 const getCSRFTokenFromBackend = async () => {
     try {
         const response = await instance.get("csrf/");
-        console.log("✅ CSRF Token fetched from Django:", response.data.csrfToken);
         return response.data.csrfToken;
     } catch (error) {
         console.error("❌ Error fetching CSRF token:", error);
@@ -28,7 +27,6 @@ instance.interceptors.request.use(async (config) => {
         }
     }
 
-    console.log("📡 Final Request Headers Before Sending:", config.headers);
     return config;
 });
 
