@@ -23,6 +23,8 @@ import Autocomplete from "@mui/material/Autocomplete";
 
 import axios from "../services/axios";
 import { getUser } from "../services/authService";
+import { getCSRFToken } from "../services/authService";
+
 
 // We use moment for the localizer
 const localizer = momentLocalizer(moment);
@@ -256,56 +258,74 @@ const AppointmentCalendarPage = () => {
   const handleSaveAppointment = async () => {
     // Basic validation
     if (!isNewClient && !selectedClient) {
-      alert("Please select an existing client or create a new client.");
-      return;
+        alert("Please select an existing client or create a new client.");
+        return;
     }
     if (!formData.artist || !formData.service) {
-      alert("Artist and Service are required.");
-      return;
-    }
-
-    // If employee, ensure they can only create/edit their own appointments
-    if (
-      currentUser?.role === "employee" &&
-      formData.artist !== currentUser?.id.toString()
-    ) {
-      alert("Employees can only create/edit their own appointments.");
-      return;
+        alert("Artist and Service are required.");
+        return;
     }
 
     const timeStr = formData.startTime + ":00";
     const status = currentUser?.role === "admin" ? "confirmed" : "pending";
 
-    // Prepare the data to send
-    const payload = {
-      client_id: isNewClient ? undefined : selectedClient?.id,
-      new_client: isNewClient ? newClientData : undefined,
-      artist_id: formData.artist,
-      service: formData.service,
-      price: formData.price,
-      date: formData.date,
-      time: timeStr,
-      notes: formData.notes,
-      status,
-    };
+    let clientId = selectedClient?.id; // Default to existing client
 
     try {
-      if (selectedEvent) {
-        // Updating an existing appointment
-        await axios.patch(`/appointments/${selectedEvent.id}/`, payload);
-        alert("Appointment updated!");
-      } else {
-        // Creating a new appointment
-        await axios.post("/appointments/", payload);
-        alert("Appointment created!");
-      }
-      handleCloseModal();
-      fetchAppointments();
-    } catch (err) {
-      console.error("Error saving appointment:", err);
-      alert(err.response?.data?.error || "Error saving appointment.");
-    }
+        const csrfToken = await getCSRFToken();
+        if (!csrfToken) {
+            alert("CSRF Token is missing.");
+            return;
+        }
+
+        // If creating a new client, make the API call first
+// If creating a new client, make the API call first
+if (isNewClient) {
+  const newClientPayload = {
+      ...newClientData,
+      artist: formData.artist,  // ✅ Ensure we send the artist ID
   };
+
+  const clientResponse = await axios.post("/clients/", newClientPayload, {
+      headers: { "X-CSRFToken": csrfToken },
+  });
+
+  clientId = clientResponse.data.id; // Assign newly created client ID
+}
+
+
+        // Now create the appointment with the clientId
+        const appointmentPayload = {
+            client_id: clientId,
+            artist_id: formData.artist,
+            service: formData.service,
+            price: formData.price,
+            date: formData.date,
+            time: timeStr,
+            notes: formData.notes,
+            status,
+        };
+
+        if (selectedEvent) {
+            await axios.patch(`/appointments/${selectedEvent.id}/`, appointmentPayload, {
+                headers: { "X-CSRFToken": csrfToken },
+            });
+            alert("Appointment updated!");
+        } else {
+            await axios.post("/appointments/", appointmentPayload, {
+                headers: { "X-CSRFToken": csrfToken },
+            });
+            alert("Appointment created!");
+        }
+
+        handleCloseModal();
+        fetchAppointments();
+    } catch (err) {
+        console.error("Error saving appointment:", err);
+        alert(err.response?.data?.error || "Error saving appointment.");
+    }
+};
+
 
   // -------------------------------------------------
   // Time Range for the Calendar
@@ -524,7 +544,7 @@ const AppointmentCalendarPage = () => {
                 label="Date"
                 type="date"
                 fullWidth
-                value={formData.date}
+                value={formData.date || moment().format("YYYY-MM-DD")}
                 onChange={(e) =>
                   setFormData({ ...formData, date: e.target.value })
                 }
@@ -535,7 +555,7 @@ const AppointmentCalendarPage = () => {
                 label="Start Time"
                 type="time"
                 fullWidth
-                value={formData.startTime}
+                value={formData.startTime || "00:00"}
                 onChange={(e) =>
                   setFormData({ ...formData, startTime: e.target.value })
                 }
@@ -546,7 +566,7 @@ const AppointmentCalendarPage = () => {
                 label="End Time"
                 type="time"
                 fullWidth
-                value={formData.endTime}
+                value={formData.endTime || "00:00"}  // ✅ Ensure valid fallback
                 onChange={(e) =>
                   setFormData({ ...formData, endTime: e.target.value })
                 }
