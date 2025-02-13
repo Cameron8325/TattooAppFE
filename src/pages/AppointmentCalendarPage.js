@@ -44,7 +44,7 @@ const AppointmentCalendarPage = () => {
 
   // Appointment form fields (excluding the client logic)
   const [formData, setFormData] = useState({
-    artist: "",
+    employee: "",
     service: "",
     price: "",
     date: "",
@@ -135,20 +135,19 @@ const AppointmentCalendarPage = () => {
     try {
       console.log("🔄 Fetching dropdown data...");
       const [artistsRes, servicesRes] = await Promise.allSettled([
-        axios.get("/users/?role=employee").catch(() => ({ data: [] })), // Fetch artists (employees)
-        axios.get("/services/").catch(() => ({ data: [] })), // Fetch services
+        axios.get("/users/?role=employee").catch(() => ({ data: [] })),
+        axios.get("/services/").catch(() => ({ data: [] })),
       ]);
 
-      // Set artists state only if the response contains a valid array
       setArtists(Array.isArray(artistsRes.value?.data) ? artistsRes.value.data : []);
-
-      // Set services state only if the response contains a valid array
       setServices(Array.isArray(servicesRes.value?.data) ? servicesRes.value.data : []);
 
+      console.log("🔍 Services Data:", servicesRes.value?.data);
     } catch (err) {
       console.error("Error in fetchDropdownData:", err);
     }
   };
+
 
   // -------------------------------------------------
   // Load data on mount
@@ -166,7 +165,7 @@ const AppointmentCalendarPage = () => {
     setSelectedEvent(null);
 
     setFormData({
-      artist: currentUser?.role === "admin" ? "" : currentUser?.id || "",
+      employee: currentUser?.role === "admin" ? "" : currentUser?.id || "",
       service: "",
       date: moment(start).format("YYYY-MM-DD"),
       startTime: moment(start).format("HH:mm"),
@@ -189,35 +188,38 @@ const AppointmentCalendarPage = () => {
 
   // Called when selecting an existing event => edit
   const handleSelectEvent = (event) => {
-    setSelectedEvent(event);
+    console.log("Selected Appointment Data:", event.extendedAppt); // Log appointment data
+  
+    setSelectedEvent(event); // Store the selected event
     const appt = event.extendedAppt;
-
-    // If we have an existing client, place it in selectedClient
+  
     setIsNewClient(false);
     setSelectedClient(appt.client || null);
-
+  
     setFormData({
-      artist: appt.artist?.id || "",
-      service: appt.service || "",
+      employee: appt.employee || "",  // ✅ Ensure this correctly sets the employee
+      service: appt.service,  
       price: appt.price || "",
       date: appt.date,
-      startTime: appt.time.slice(0, 5), // "HH:mm"
-      endTime: moment(`${appt.date}T${appt.time}`)
-        .add(1, "hour")
-        .format("HH:mm"), // demonstration
+      startTime: appt.time.slice(0, 5),
+      endTime: moment(`${appt.date}T${appt.time}`).add(1, "hour").format("HH:mm"),
       notes: appt.notes || "",
     });
-
-    // Clear out newClientData
-    setNewClientData({
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-    });
-
+  
+    // ✅ Ensure employee dropdown is populated with the assigned employee
+    if (appt.employee?.id && !artists.some((e) => e.id === appt.employee.id)) {
+      setArtists((prevArtists) => [
+        ...prevArtists,
+        { id: appt.employee.id, username: appt.employee.username },
+      ]);
+    }
+  
+    // ✅ Ensure the modal opens
     setOpenModal(true);
   };
+  
+
+
 
   // Color-code event
   const eventPropGetter = (event) => {
@@ -256,75 +258,54 @@ const AppointmentCalendarPage = () => {
   };
 
   const handleSaveAppointment = async () => {
-    // Basic validation
-    if (!isNewClient && !selectedClient) {
-        alert("Please select an existing client or create a new client.");
-        return;
+    console.log("🚀 Form Data Before Submission:", formData); // 🔍 Log form data
+    console.log("📨 Sending Request Data:", {
+      employee: formData.employee,
+      service: formData.service,
+      price: formData.price,
+      date: formData.date,
+      time: formData.startTime + ":00",
+      notes: formData.notes,
+      status: "confirmed",
+      new_client: isNewClient ? newClientData : null,  // ✅ Log the data being sent
+      client_id: !isNewClient ? selectedClient?.id : null,
+    });
+
+    let requestData = {
+      employee: formData.employee,
+      service: formData.service,
+      price: formData.price,
+      date: formData.date,
+      time: formData.startTime + ":00",
+      notes: formData.notes,
+      status: "confirmed",
+    };
+
+    if (isNewClient) {
+      requestData.new_client = {
+        ...newClientData,
+        employee: formData.employee, // ✅ Assign the employee to the new client
+      };
+    } else {
+      requestData.client_id = selectedClient?.id;  // ✅ Send client_id for existing clients
     }
-    if (!formData.artist || !formData.service) {
-        alert("Artist and Service are required.");
-        return;
-    }
-
-    const timeStr = formData.startTime + ":00";
-    const status = currentUser?.role === "admin" ? "confirmed" : "pending";
-
-    let clientId = selectedClient?.id; // Default to existing client
-
+    
     try {
-        const csrfToken = await getCSRFToken();
-        if (!csrfToken) {
-            alert("CSRF Token is missing.");
-            return;
-        }
+      const response = await axios.post("/appointments/", requestData, {
+        headers: { "X-CSRFToken": await getCSRFToken() },
+      });
 
-        // If creating a new client, make the API call first
-// If creating a new client, make the API call first
-if (isNewClient) {
-  const newClientPayload = {
-      ...newClientData,
-      artist: formData.artist,  // ✅ Ensure we send the artist ID
-  };
-
-  const clientResponse = await axios.post("/clients/", newClientPayload, {
-      headers: { "X-CSRFToken": csrfToken },
-  });
-
-  clientId = clientResponse.data.id; // Assign newly created client ID
-}
-
-
-        // Now create the appointment with the clientId
-        const appointmentPayload = {
-            client_id: clientId,
-            artist_id: formData.artist,
-            service: formData.service,
-            price: formData.price,
-            date: formData.date,
-            time: timeStr,
-            notes: formData.notes,
-            status,
-        };
-
-        if (selectedEvent) {
-            await axios.patch(`/appointments/${selectedEvent.id}/`, appointmentPayload, {
-                headers: { "X-CSRFToken": csrfToken },
-            });
-            alert("Appointment updated!");
-        } else {
-            await axios.post("/appointments/", appointmentPayload, {
-                headers: { "X-CSRFToken": csrfToken },
-            });
-            alert("Appointment created!");
-        }
-
-        handleCloseModal();
-        fetchAppointments();
+      console.log("✅ Appointment Created:", response.data);
+      alert("Appointment created!");
+      handleCloseModal();
+      fetchAppointments(); // Ensure updated data is shown
     } catch (err) {
-        console.error("Error saving appointment:", err);
-        alert(err.response?.data?.error || "Error saving appointment.");
+      console.error("❌ Error saving appointment:", err);
+      console.error("Full error response:", err.response?.data);
+      alert(JSON.stringify(err.response?.data, null, 2) || "Error saving appointment.");
     }
 };
+  
 
 
   // -------------------------------------------------
@@ -490,14 +471,12 @@ if (isNewClient) {
             {/* 3) Artist Selection */}
             <Grid item xs={12}>
               <FormControl fullWidth disabled={currentUser?.role === "employee"}>
-                <InputLabel>Artist</InputLabel>
+                <InputLabel>Employee</InputLabel>  {/* ✅ Update label */}
                 <Select
-                  value={formData.artist}
-                  onChange={(e) =>
-                    setFormData({ ...formData, artist: e.target.value })
-                  }
+                  value={formData.employee || ""}  // ✅ Ensure correct state field is used
+                  onChange={(e) => setFormData({ ...formData, employee: e.target.value })}  // ✅ Set "employee", not "artist"
                 >
-                  {artists.map((a) => (
+                  {artists.map((a) => (  // ❌ Rename "artists" to "employees" if backend has changed
                     <MenuItem key={a.id} value={a.id}>
                       {a.username}
                     </MenuItem>
@@ -506,25 +485,24 @@ if (isNewClient) {
               </FormControl>
             </Grid>
 
+
             {/* 4) Service Selection */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Service</InputLabel>
                 <Select
-                  value={formData.service}
-                  onChange={(e) => {
-                    // Update service selection but keep custom price untouched
-                    setFormData({ ...formData, service: e.target.value });
-                  }}
+                  value={formData.service || ""}
+                  onChange={(e) => setFormData({ ...formData, service: e.target.value })}
                 >
                   {services.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
+                    <MenuItem key={s.id} value={s.name}>
                       {s.name_display}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
+
 
             {/* Custom Price Field */}
             <Grid item xs={12} md={6} >
