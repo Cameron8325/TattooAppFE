@@ -1,10 +1,12 @@
+// src/index.js
 import React from "react";
-import ReactDOM from "react-dom/client"; // ✅ Use React 18 API
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";  // ✅ Router is placed at the highest level
 import App from "./App";
 
-const root = ReactDOM.createRoot(document.getElementById("root")); // ✅ Fix
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  // <React.StrictMode>
+  <BrowserRouter> {/* ✅ Now Router wraps everything */}
     <App />
-  // </React.StrictMode>
+  </BrowserRouter>
 );

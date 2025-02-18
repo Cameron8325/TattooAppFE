@@ -47,8 +47,9 @@ export const logout = async () => {
             headers: { "X-CSRFToken": csrfToken },
         });
 
+        
         console.log("✅ Logout successful:", response.data);
-        return response;
+        return true;
     } catch (error) {
         console.error("❌ Logout error:", error.response?.data);
         throw error;
