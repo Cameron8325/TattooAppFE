@@ -10,9 +10,11 @@ import UserManagementPage from "./pages/UserManagementPage";
 import AccessDeniedPage from "./pages/AccessDeniedPage";
 import AppointmentCalendarPage from "./pages/AppointmentCalendarPage";
 import BillingReportsPage from "./pages/BillingReportsPage";
+import { AuthProvider } from "./context/authContext";
 
 const App = () => {
   return (
+    <AuthProvider>
       <Router>
         <Navbar />
         <Routes>
@@ -28,6 +30,7 @@ const App = () => {
           <Route path="/" element={<h1>Welcome to the Tattoo Appointment App</h1>} />
         </Routes>
       </Router>
+    </AuthProvider>
   );
 };
 

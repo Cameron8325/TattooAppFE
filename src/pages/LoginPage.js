@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { login, getUser } from "../services/authService";
-import { useNavigate } from "react-router-dom"; // ✅ Replacing useNavigate with useHistory
+import React, { useState, useContext } from "react";
+import { AuthContext } from "../context/authContext"; // ✅ Ensure correct import path
+import { useNavigate } from "react-router-dom";
 import { Container, TextField, Button, Typography, Box, Alert } from "@mui/material";
 
 const LoginPage = () => {
+  const { login } = useContext(AuthContext); // ✅ Get login function from context
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -11,16 +12,14 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        await login(credentials); // ✅ No need to handle tokens
-        const user = await getUser(); // ✅ Fetch user from session
-        if (user.data) {
-            navigate("/dashboard"); // ✅ Redirect after successful login
-        }
+      const response = await login(credentials); // ✅ Calls AuthContext login
+      if (response) {
+        navigate("/dashboard"); // ✅ Redirects after setting user state
+      }
     } catch (error) {
-        setError("Invalid username or password.");
+      setError("Invalid username or password.");
     }
-};
-
+  };
 
   return (
     <Container maxWidth="sm">

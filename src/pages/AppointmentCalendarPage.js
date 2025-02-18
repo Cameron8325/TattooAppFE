@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
+import { useContext } from "react";
+import { AuthContext } from "../context/authContext";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   Dialog,
@@ -22,7 +24,6 @@ import {
 import Autocomplete from "@mui/material/Autocomplete";
 
 import axios from "../services/axios";
-import { getUser } from "../services/authService";
 import { getCSRFToken } from "../services/authService";
 
 
@@ -33,7 +34,7 @@ const AppointmentCalendarPage = () => {
   // -------------------------------------------------
   // State
   // -------------------------------------------------
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user } = useContext(AuthContext);
   const [appointments, setAppointments] = useState([]);
   const [artists, setArtists] = useState([]);
   const [services, setServices] = useState([]);
@@ -74,23 +75,13 @@ const AppointmentCalendarPage = () => {
     phone: "",
   });
 
-  // -------------------------------------------------
-  // Fetch current user
-  // -------------------------------------------------
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await getUser();
-        setCurrentUser(data); // e.g. { id, username, role }
-      } catch (err) {
-        console.error("Error fetching user:", err);
-      }
-    })();
-  }, []);
 
   // -------------------------------------------------
   // Fetch appointments
   // -------------------------------------------------
+
+
+
   const fetchAppointments = async () => {
     try {
       const { data } = await axios.get("/appointments/");
@@ -165,7 +156,7 @@ const AppointmentCalendarPage = () => {
     setSelectedEvent(null);
 
     setFormData({
-      employee: currentUser?.role === "admin" ? "" : currentUser?.id || "",
+      employee: user?.role === "admin" ? "" : user?.id || "",
       service: "",
       date: moment(start).format("YYYY-MM-DD"),
       startTime: moment(start).format("HH:mm"),
@@ -470,7 +461,7 @@ const AppointmentCalendarPage = () => {
 
             {/* 3) Artist Selection */}
             <Grid item xs={12}>
-              <FormControl fullWidth disabled={currentUser?.role === "employee"}>
+              <FormControl fullWidth disabled={user?.role === "employee"}>
                 <InputLabel>Employee</InputLabel>  {/* ✅ Update label */}
                 <Select
                   value={formData.employee || ""}  // ✅ Ensure correct state field is used
