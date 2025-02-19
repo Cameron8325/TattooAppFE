@@ -84,40 +84,29 @@ const AppointmentCalendarPage = () => {
 
   const fetchAppointments = async () => {
     try {
-      const { data } = await axios.get("/appointments/");
-      /*
-        "data" is an array of appointments:
-        {
-          id,
-          client: {...} or null,
-          artist: {...} or null,
-          service,
-          date: "YYYY-MM-DD",
-          time: "HH:mm:ss",
-          status: "pending"|"confirmed"|"canceled"...,
-          notes,
-          requires_approval
-        }
-      */
-      const events = data.map((appt) => {
-        const start = moment(`${appt.date}T${appt.time}`).toDate();
-        // +1 hour for demonstration or you can do a real "end_time" if you store it
-        const end = moment(start).add(1, "hour").toDate();
+        const { data } = await axios.get("/appointments/");
 
-        return {
-          id: appt.id,
-          title: `${appt.client?.first_name ?? "Unknown"} (${appt.status})`,
-          start,
-          end,
-          status: appt.status,
-          extendedAppt: appt, // store the entire object
-        };
-      });
-      setAppointments(events);
+        const events = data.map((appt) => {
+            const start = moment(`${appt.date}T${appt.time}`).toDate();
+            const end = appt.end_time
+                ? moment(`${appt.date}T${appt.end_time}`).toDate()  // ✅ Use actual end_time
+                : moment(start).add(1, "hour").toDate();  // Fallback for older records
+
+            return {
+                id: appt.id,
+                title: `${appt.client?.first_name ?? "Unknown"} (${appt.status})`,
+                start,
+                end,
+                status: appt.status,
+                extendedAppt: appt,
+            };
+        });
+
+        setAppointments(events);
     } catch (err) {
-      console.error("Error fetching appointments:", err);
+        console.error("Error fetching appointments:", err);
     }
-  };
+};
 
   // -------------------------------------------------
   // Fetch dropdown data for artists, services
@@ -179,38 +168,26 @@ const AppointmentCalendarPage = () => {
 
   // Called when selecting an existing event => edit
   const handleSelectEvent = (event) => {
-    console.log("Selected Appointment Data:", event.extendedAppt); // Log appointment data
-  
-    setSelectedEvent(event); // Store the selected event
+    console.log("Selected Appointment Data:", event.extendedAppt); // Debugging
+
+    setSelectedEvent(event);
     const appt = event.extendedAppt;
-  
+
     setIsNewClient(false);
     setSelectedClient(appt.client || null);
-  
+
     setFormData({
-      employee: appt.employee || "",  // ✅ Ensure this correctly sets the employee
-      service: appt.service,  
-      price: appt.price || "",
-      date: appt.date,
-      startTime: appt.time.slice(0, 5),
-      endTime: moment(`${appt.date}T${appt.time}`).add(1, "hour").format("HH:mm"),
-      notes: appt.notes || "",
+        employee: appt.employee || "",  
+        service: appt.service,  
+        price: appt.price || "",
+        date: appt.date,
+        startTime: appt.time.slice(0, 5),
+        endTime: appt.end_time ? appt.end_time.slice(0, 5) : moment(`${appt.date}T${appt.time}`).add(1, "hour").format("HH:mm"),  // ✅ Use actual end_time if available
+        notes: appt.notes || "",
     });
-  
-    // ✅ Ensure employee dropdown is populated with the assigned employee
-    if (appt.employee?.id && !artists.some((e) => e.id === appt.employee.id)) {
-      setArtists((prevArtists) => [
-        ...prevArtists,
-        { id: appt.employee.id, username: appt.employee.username },
-      ]);
-    }
-  
-    // ✅ Ensure the modal opens
+
     setOpenModal(true);
-  };
-  
-
-
+};
 
   // Color-code event
   const eventPropGetter = (event) => {
@@ -249,54 +226,108 @@ const AppointmentCalendarPage = () => {
   };
 
   const handleSaveAppointment = async () => {
-    console.log("🚀 Form Data Before Submission:", formData); // 🔍 Log form data
-    console.log("📨 Sending Request Data:", {
-      employee: formData.employee,
-      service: formData.service,
-      price: formData.price,
-      date: formData.date,
-      time: formData.startTime + ":00",
-      notes: formData.notes,
-      status: "confirmed",
-      new_client: isNewClient ? newClientData : null,  // ✅ Log the data being sent
-      client_id: !isNewClient ? selectedClient?.id : null,
-    });
+    console.log("🚀 Form Data Before Submission:", formData);
+
+    const isAdmin = user?.role === "admin";
 
     let requestData = {
-      employee: formData.employee,
-      service: formData.service,
-      price: formData.price,
-      date: formData.date,
-      time: formData.startTime + ":00",
-      notes: formData.notes,
-      status: "confirmed",
+        employee: formData.employee,
+        service: formData.service,
+        price: formData.price,
+        date: formData.date,
+        time: formData.startTime + ":00",
+        end_time: formData.endTime + ":00",  // ✅ Ensure end_time is sent
+        notes: formData.notes,
+        status: isAdmin ? "confirmed" : "pending",
+        requires_approval: !isAdmin
     };
 
     if (isNewClient) {
-      requestData.new_client = {
-        ...newClientData,
-        employee: formData.employee, // ✅ Assign the employee to the new client
-      };
+        if (!newClientData.first_name || !newClientData.last_name || !newClientData.email) {
+            alert("Error: New client information is incomplete.");
+            return;
+        }
+        requestData.new_client = {
+            first_name: newClientData.first_name,
+            last_name: newClientData.last_name,
+            email: newClientData.email,
+            phone: newClientData.phone,
+            employee: formData.employee
+        };
     } else {
-      requestData.client_id = selectedClient?.id;  // ✅ Send client_id for existing clients
+        const clientId = selectedClient?.id ?? selectedEvent?.extendedAppt?.client?.id;
+        if (!clientId) {
+            alert("Error: Client information is missing. Please select a client.");
+            return;
+        }
+        requestData.client_id = clientId;
     }
-    
-    try {
-      const response = await axios.post("/appointments/", requestData, {
-        headers: { "X-CSRFToken": await getCSRFToken() },
-      });
 
-      console.log("✅ Appointment Created:", response.data);
-      alert("Appointment created!");
-      handleCloseModal();
-      fetchAppointments(); // Ensure updated data is shown
+    console.log("📨 Sending Request Data:", requestData);
+
+    try {
+        let response;
+        
+        if (selectedEvent) {
+            if (isAdmin) {
+                requestData.status = "confirmed";
+                requestData.requires_approval = false;
+            }
+
+            response = await axios.patch(
+                `/appointments/${selectedEvent.id}/reschedule/`, 
+                requestData, 
+                { headers: { "X-CSRFToken": await getCSRFToken() } }
+            );
+
+            console.log("✅ Appointment Updated:", response.data);
+            alert("Appointment rescheduled successfully.");
+
+            // ✅ Ensure the event updates in state correctly
+            setAppointments((prevAppointments) =>
+                prevAppointments.map((appt) =>
+                    appt.id === selectedEvent.id
+                        ? {
+                            ...appt,
+                            start: moment(`${response.data.date}T${response.data.time}`).toDate(),
+                            end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),  // ✅ Use correct end_time from response
+                            status: response.data.status,
+                            extendedAppt: response.data
+                        }
+                        : appt
+                )
+            );
+
+        } else {
+            response = await axios.post(
+                "/appointments/",
+                requestData,
+                { headers: { "X-CSRFToken": await getCSRFToken() } }
+            );
+
+            console.log("✅ Appointment Created:", response.data);
+            alert(isAdmin ? "Appointment confirmed!" : "Appointment requested and pending approval.");
+
+            setAppointments((prevAppointments) => [
+                ...prevAppointments,
+                {
+                    id: response.data.id,
+                    title: `${response.data.client?.first_name ?? "Unknown"} (${response.data.status})`,
+                    start: moment(`${response.data.date}T${response.data.time}`).toDate(),
+                    end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),  // ✅ Ensure correct end_time
+                    status: response.data.status,
+                    extendedAppt: response.data
+                }
+            ]);
+        }
+
+        handleCloseModal();
     } catch (err) {
-      console.error("❌ Error saving appointment:", err);
-      console.error("Full error response:", err.response?.data);
-      alert(JSON.stringify(err.response?.data, null, 2) || "Error saving appointment.");
+        console.error("❌ Error saving appointment:", err);
+        console.error("Full error response:", err.response?.data);
+        alert(JSON.stringify(err.response?.data, null, 2) || "Error saving appointment.");
     }
 };
-  
 
 
   // -------------------------------------------------
