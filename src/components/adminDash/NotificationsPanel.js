@@ -1,4 +1,3 @@
-// src/components/adminDash/NotificationsPanel.js
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -31,7 +30,6 @@ const deduplicateNotifications = (notifications) => {
     if (!grouped[key]) {
       grouped[key] = notif;
     } else {
-      // If one notification is pending and the other isn’t, choose the pending one.
       if (grouped[key].status !== "pending" && notif.status === "pending") {
         grouped[key] = notif;
       } else if (new Date(notif.timestamp) > new Date(grouped[key].timestamp)) {
@@ -50,6 +48,102 @@ const getEmployeeName = (employee) => {
   return `Employee #${employee}`;
 };
 
+/**
+ * Returns an object with previous and current values for a given field.
+ * For non-time fields.
+ */
+const getFieldValues = (notification, field) => {
+  let previous = "";
+  let current = "";
+  if (notification.previous_details && notification.previous_details[field] !== undefined) {
+    previous = notification.previous_details[field];
+  } else if (notification.appointment_details && notification.appointment_details[field] !== undefined) {
+    previous = notification.appointment_details[field];
+  }
+  if (notification.changes && notification.changes[field] && notification.changes[field].new !== undefined) {
+    current = notification.changes[field].new;
+  } else if (notification.appointment_details && notification.appointment_details[field] !== undefined) {
+    current = notification.appointment_details[field];
+  }
+  return { previous, current };
+};
+
+/**
+ * Returns time values (combining start and end times) for previous and current states.
+ */
+const getTimeValues = (notification) => {
+  const prevStart = notification.previous_details && notification.previous_details.time
+    ? notification.previous_details.time
+    : notification.appointment_details.time;
+  const prevEnd = notification.previous_details && notification.previous_details.end_time
+    ? notification.previous_details.end_time
+    : notification.appointment_details.end_time;
+  const currentStart = notification.changes && notification.changes.time && notification.changes.time.new
+    ? notification.changes.time.new
+    : notification.appointment_details.time;
+  const currentEnd = notification.changes && notification.changes.end_time && notification.changes.end_time.new
+    ? notification.changes.end_time.new
+    : notification.appointment_details.end_time;
+
+  return {
+    previous: `${prevStart} - ${prevEnd}`,
+    current: `${currentStart} - ${currentEnd}`,
+  };
+};
+
+/**
+ * Renders a single table that displays the appointment details with two columns:
+ * one for the previous (last confirmed) value and one for the new (requested) value.
+ * Changed fields are highlighted.
+ */
+const renderDiffTable = (notification) => {
+  // For fields that don't change in our flow, we simply display the same values.
+  // We assume that client and artist fields don't change with update requests.
+  const client = notification.appointment_details.client;
+  const artist = notification.appointment_details.artist;
+
+  const serviceValues = getFieldValues(notification, "service");
+  const priceValues = getFieldValues(notification, "price");
+  const dateValues = getFieldValues(notification, "date");
+  const notesValues = getFieldValues(notification, "notes");
+  const timeValues = getTimeValues(notification);
+
+  // Array of rows. Each row is an object with label, previous, current.
+  const rows = [
+    { label: "Client", previous: client, current: client },
+    { label: "Artist", previous: artist, current: artist },
+    { label: "Service", previous: serviceValues.previous, current: serviceValues.current },
+    { label: "Price", previous: `$${priceValues.previous}`, current: `$${priceValues.current}` },
+    { label: "Date", previous: dateValues.previous, current: dateValues.current },
+    { label: "Time", previous: timeValues.previous, current: timeValues.current },
+    { label: "Notes", previous: notesValues.previous, current: notesValues.current },
+  ];
+
+  return (
+    <Table sx={{ mt: 2 }}>
+      <TableHead>
+        <TableRow>
+          <TableCell><strong>Field</strong></TableCell>
+          <TableCell><strong>Previous</strong></TableCell>
+          <TableCell><strong>New</strong></TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((row) => {
+          const isChanged = row.previous !== row.current;
+          return (
+            <TableRow key={row.label} sx={{ backgroundColor: isChanged ? "#ffebee" : "inherit" }}>
+              <TableCell>{row.label}</TableCell>
+              <TableCell>{row.previous}</TableCell>
+              <TableCell>{row.current}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+};
+
 const NotificationsPanel = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +153,6 @@ const NotificationsPanel = () => {
     setLoading(true);
     try {
       const { data } = await axios.get("/recent-activity/");
-      // Group by appointment so that one notification per appointment is shown.
       const deduped = deduplicateNotifications(data);
       setNotifications(deduped);
     } catch (err) {
@@ -76,7 +169,6 @@ const NotificationsPanel = () => {
   const handleApprove = async (id) => {
     try {
       await axios.post(`/recent-activity/${id}/approve/`);
-      // Refetch to show the updated notification status (approved)
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
@@ -87,7 +179,6 @@ const NotificationsPanel = () => {
   const handleDecline = async (id) => {
     try {
       await axios.post(`/recent-activity/${id}/decline/`);
-      // Refetch so that the updated (denied) status is shown
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
@@ -95,7 +186,6 @@ const NotificationsPanel = () => {
     }
   };
 
-  // Delete button appears only in the modal.
   const handleDelete = async (id) => {
     try {
       await axios.delete(`/recent-activity/${id}/delete/`);
@@ -117,37 +207,6 @@ const NotificationsPanel = () => {
       default:
         return "default";
     }
-  };
-
-  const renderChangesTable = (changes, previousDetails) => {
-    if (!previousDetails) return null;
-    return (
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Field</TableCell>
-            <TableCell>Previous</TableCell>
-            <TableCell>New</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {Object.keys(previousDetails).map((key) => (
-            <TableRow
-              key={key}
-              sx={{
-                backgroundColor: changes && changes[key] ? "#ffebee" : "inherit",
-              }}
-            >
-              <TableCell>{key}</TableCell>
-              <TableCell>{previousDetails[key]}</TableCell>
-              <TableCell>
-                {changes && changes[key] ? changes[key].new : previousDetails[key]}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
   };
 
   if (loading) {
@@ -186,9 +245,7 @@ const NotificationsPanel = () => {
                       ? "Created Appointment"
                       : "Updated Appointment"}
                   </TableCell>
-                  <TableCell>
-                    {new Date(notification.timestamp).toLocaleString()}
-                  </TableCell>
+                  <TableCell>{new Date(notification.timestamp).toLocaleString()}</TableCell>
                   <TableCell>
                     <Chip
                       label={notification.status.toUpperCase()}
@@ -227,7 +284,7 @@ const NotificationsPanel = () => {
           </DialogTitle>
           <DialogContent dividers>
             <Typography variant="subtitle1" gutterBottom>
-              <strong>Employee:</strong> {getEmployeeName(selectedNotification.employee)}
+              <strong>Employee:</strong> {selectedNotification.employee_name || getEmployeeName(selectedNotification.employee)}
             </Typography>
             <Typography variant="subtitle1" gutterBottom>
               <strong>Action:</strong>{" "}
@@ -236,17 +293,14 @@ const NotificationsPanel = () => {
                 : "Updated Appointment"}
             </Typography>
             <Typography variant="subtitle1" gutterBottom>
-              <strong>Timestamp:</strong>{" "}
-              {new Date(selectedNotification.timestamp).toLocaleString()}
+              <strong>Timestamp:</strong> {new Date(selectedNotification.timestamp).toLocaleString()}
             </Typography>
             <Typography variant="subtitle1" gutterBottom>
               <strong>Status:</strong> {selectedNotification.status.toUpperCase()}
             </Typography>
-            {selectedNotification.changes &&
-              renderChangesTable(
-                selectedNotification.changes,
-                selectedNotification.previous_details
-              )}
+
+            {/* Render the combined diff table with Previous and New values */}
+            {selectedNotification.appointment_details && renderDiffTable(selectedNotification)}
           </DialogContent>
           <DialogActions>
             {selectedNotification.status === "pending" && (
