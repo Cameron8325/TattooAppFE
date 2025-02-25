@@ -1,5 +1,5 @@
-// AdminDashboard.js
-import { Grid, Paper, Typography, Box } from '@mui/material';
+import { Grid, Paper, Typography, Box, Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import AppointmentsChart from '../components/adminDash/AppointmentsChart';
 import KeyMetricsCard from '../components/adminDash/KeyMetricsCard';
 import ArtistPerformanceChart from '../components/adminDash/ArtistPerformanceChart';
@@ -7,6 +7,7 @@ import NotificationsPanel from '../components/adminDash/NotificationsPanel';
 import AppointmentOverview from '../components/adminDash/AppointmentOverview';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -64,6 +65,12 @@ const AdminDashboard = () => {
           </Paper>
         </Grid>
       </Grid>
+      {/* New Button for Archived Appointments */}
+      <Box sx={{ marginTop: 3, textAlign: 'center' }}>
+        <Button variant="contained" color="primary" onClick={() => navigate("/archived-appointments")}>
+          View Archived Appointments
+        </Button>
+      </Box>
     </Box>
   );
 };

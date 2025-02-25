@@ -19,31 +19,21 @@ import {
   Box,
   Grid,
 } from "@mui/material";
-
-// 1) Import Autocomplete
 import Autocomplete from "@mui/material/Autocomplete";
-
 import axios from "../services/axios";
 import { getCSRFToken } from "../services/authService";
 
-
-// We use moment for the localizer
 const localizer = momentLocalizer(moment);
 
 const AppointmentCalendarPage = () => {
-  // -------------------------------------------------
-  // State
-  // -------------------------------------------------
   const { user } = useContext(AuthContext);
   const [appointments, setAppointments] = useState([]);
   const [artists, setArtists] = useState([]);
   const [services, setServices] = useState([]);
 
-  // For the create/edit modal
   const [openModal, setOpenModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null); // if editing
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
-  // Appointment form fields (excluding the client logic)
   const [formData, setFormData] = useState({
     employee: "",
     service: "",
@@ -54,20 +44,10 @@ const AppointmentCalendarPage = () => {
     notes: "",
   });
 
-  // -------------------------------------
-  // Client search-related states
-  // -------------------------------------
-  // For searching existing clients
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-
-  // Whether we are creating a new client
   const [isNewClient, setIsNewClient] = useState(false);
-
-  // If picking an existing client, store the selected client object here
   const [selectedClient, setSelectedClient] = useState(null);
-
-  // If creating a new client, store their data here
   const [newClientData, setNewClientData] = useState({
     first_name: "",
     last_name: "",
@@ -75,75 +55,49 @@ const AppointmentCalendarPage = () => {
     phone: "",
   });
 
-
-  // -------------------------------------------------
-  // Fetch appointments
-  // -------------------------------------------------
-
-
-
   const fetchAppointments = async () => {
     try {
-        const { data } = await axios.get("/appointments/");
-
-        const events = data.map((appt) => {
-            const start = moment(`${appt.date}T${appt.time}`).toDate();
-            const end = appt.end_time
-                ? moment(`${appt.date}T${appt.end_time}`).toDate()  // ✅ Use actual end_time
-                : moment(start).add(1, "hour").toDate();  // Fallback for older records
-
-            return {
-                id: appt.id,
-                title: `${appt.client?.first_name ?? "Unknown"} (${appt.status})`,
-                start,
-                end,
-                status: appt.status,
-                extendedAppt: appt,
-            };
-        });
-
-        setAppointments(events);
+      const { data } = await axios.get("/appointments/");
+      const events = data.map((appt) => {
+        const start = moment(`${appt.date}T${appt.time}`).toDate();
+        const end = appt.end_time
+          ? moment(`${appt.date}T${appt.end_time}`).toDate()
+          : moment(start).add(1, "hour").toDate();
+        return {
+          id: appt.id,
+          title: `${appt.client?.first_name ?? "Unknown"} (${appt.status})`,
+          start,
+          end,
+          status: appt.status,
+          extendedAppt: appt,
+        };
+      });
+      setAppointments(events);
     } catch (err) {
-        console.error("Error fetching appointments:", err);
+      console.error("Error fetching appointments:", err);
     }
-};
+  };
 
-  // -------------------------------------------------
-  // Fetch dropdown data for artists, services
-  // -------------------------------------------------
   const fetchDropdownData = async () => {
     try {
-      console.log("🔄 Fetching dropdown data...");
       const [artistsRes, servicesRes] = await Promise.allSettled([
         axios.get("/users/?role=employee").catch(() => ({ data: [] })),
         axios.get("/services/").catch(() => ({ data: [] })),
       ]);
-
       setArtists(Array.isArray(artistsRes.value?.data) ? artistsRes.value.data : []);
       setServices(Array.isArray(servicesRes.value?.data) ? servicesRes.value.data : []);
-
-      console.log("🔍 Services Data:", servicesRes.value?.data);
     } catch (err) {
       console.error("Error in fetchDropdownData:", err);
     }
   };
 
-
-  // -------------------------------------------------
-  // Load data on mount
-  // -------------------------------------------------
   useEffect(() => {
     fetchAppointments();
     fetchDropdownData();
   }, []);
 
-  // -------------------------------------------------
-  // Big Calendar Handlers
-  // -------------------------------------------------
-  // Called when selecting an empty slot => create new
   const handleSelectSlot = ({ start, end }) => {
     setSelectedEvent(null);
-
     setFormData({
       employee: user?.role === "admin" ? "" : user?.id || "",
       service: "",
@@ -152,62 +106,42 @@ const AppointmentCalendarPage = () => {
       endTime: moment(end).format("HH:mm"),
       notes: "",
     });
-
-    // Reset client states for a brand-new appointment
     setIsNewClient(false);
     setSelectedClient(null);
-    setNewClientData({
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-    });
-
+    setNewClientData({ first_name: "", last_name: "", email: "", phone: "" });
     setOpenModal(true);
   };
 
-  // Called when selecting an existing event => edit
   const handleSelectEvent = (event) => {
-    console.log("Selected Appointment Data:", event.extendedAppt); // Debugging
-
     setSelectedEvent(event);
     const appt = event.extendedAppt;
-
     setIsNewClient(false);
     setSelectedClient(appt.client || null);
-
     setFormData({
-        employee: appt.employee || "",  
-        service: appt.service,  
-        price: appt.price || "",
-        date: appt.date,
-        startTime: appt.time.slice(0, 5),
-        endTime: appt.end_time ? appt.end_time.slice(0, 5) : moment(`${appt.date}T${appt.time}`).add(1, "hour").format("HH:mm"),  // ✅ Use actual end_time if available
-        notes: appt.notes || "",
+      employee: appt.employee || "",
+      service: appt.service,
+      price: appt.price || "",
+      date: appt.date,
+      startTime: appt.time.slice(0, 5),
+      endTime: appt.end_time ? appt.end_time.slice(0, 5) : moment(`${appt.date}T${appt.time}`).add(1, "hour").format("HH:mm"),
+      notes: appt.notes || "",
     });
-
     setOpenModal(true);
-};
+  };
 
-  // Color-code event
   const eventPropGetter = (event) => {
-    let backgroundColor = "#9e9e9e"; // default grey
+    let backgroundColor = "#9e9e9e";
     if (event.status === "confirmed") backgroundColor = "#4caf50";
     if (event.status === "pending") backgroundColor = "#ffc107";
     if (event.status === "canceled") backgroundColor = "#f44336";
     return { style: { backgroundColor } };
   };
 
-  // -------------------------------------------------
-  // Search for existing clients as user types
-  // -------------------------------------------------
   useEffect(() => {
     if (searchQuery.length >= 2) {
       axios
         .get(`/clients/?search=${encodeURIComponent(searchQuery)}`)
-        .then((res) => {
-          setSearchResults(res.data); // array of matching client objects
-        })
+        .then((res) => setSearchResults(res.data))
         .catch((err) => {
           console.error("Error searching clients:", err);
           setSearchResults([]);
@@ -217,122 +151,166 @@ const AppointmentCalendarPage = () => {
     }
   }, [searchQuery]);
 
-  // -------------------------------------------------
-  // Modal Logic
-  // -------------------------------------------------
   const handleCloseModal = () => {
     setOpenModal(false);
     setSelectedEvent(null);
   };
 
   const handleSaveAppointment = async () => {
-    console.log("🚀 Form Data Before Submission:", formData);
-
     const isAdmin = user?.role === "admin";
-
     let requestData = {
-        employee: formData.employee,
-        service: formData.service,
-        price: formData.price,
-        date: formData.date,
-        time: formData.startTime + ":00",
-        end_time: formData.endTime + ":00",  // ✅ Ensure end_time is sent
-        notes: formData.notes,
-        status: isAdmin ? "confirmed" : "pending",
-        requires_approval: !isAdmin
+      employee: formData.employee,
+      service: formData.service,
+      price: formData.price,
+      date: formData.date,
+      time: formData.startTime + ":00",
+      end_time: formData.endTime + ":00",
+      notes: formData.notes,
+      status: isAdmin ? "confirmed" : "pending",
+      requires_approval: !isAdmin,
     };
 
     if (isNewClient) {
-        if (!newClientData.first_name || !newClientData.last_name || !newClientData.email) {
-            alert("Error: New client information is incomplete.");
-            return;
-        }
-        requestData.new_client = {
-            first_name: newClientData.first_name,
-            last_name: newClientData.last_name,
-            email: newClientData.email,
-            phone: newClientData.phone,
-            employee: formData.employee
-        };
+      if (!newClientData.first_name || !newClientData.last_name || !newClientData.email) {
+        alert("Error: New client information is incomplete.");
+        return;
+      }
+      requestData.new_client = {
+        first_name: newClientData.first_name,
+        last_name: newClientData.last_name,
+        email: newClientData.email,
+        phone: newClientData.phone,
+        employee: formData.employee,
+      };
     } else {
-        const clientId = selectedClient?.id ?? selectedEvent?.extendedAppt?.client?.id;
-        if (!clientId) {
-            alert("Error: Client information is missing. Please select a client.");
-            return;
-        }
-        requestData.client_id = clientId;
+      const clientId = selectedClient?.id ?? selectedEvent?.extendedAppt?.client?.id;
+      if (!clientId) {
+        alert("Error: Client information is missing. Please select a client.");
+        return;
+      }
+      requestData.client_id = clientId;
     }
-
-    console.log("📨 Sending Request Data:", requestData);
 
     try {
-        let response;
-        
-        if (selectedEvent) {
-            if (isAdmin) {
-                requestData.status = "confirmed";
-                requestData.requires_approval = false;
-            }
-
-            response = await axios.patch(
-                `/appointments/${selectedEvent.id}/reschedule/`, 
-                requestData, 
-                { headers: { "X-CSRFToken": await getCSRFToken() } }
-            );
-
-            console.log("✅ Appointment Updated:", response.data);
-            alert("Appointment rescheduled successfully.");
-
-            // ✅ Ensure the event updates in state correctly
-            setAppointments((prevAppointments) =>
-                prevAppointments.map((appt) =>
-                    appt.id === selectedEvent.id
-                        ? {
-                            ...appt,
-                            start: moment(`${response.data.date}T${response.data.time}`).toDate(),
-                            end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),  // ✅ Use correct end_time from response
-                            status: response.data.status,
-                            extendedAppt: response.data
-                        }
-                        : appt
-                )
-            );
-
-        } else {
-            response = await axios.post(
-                "/appointments/",
-                requestData,
-                { headers: { "X-CSRFToken": await getCSRFToken() } }
-            );
-
-            console.log("✅ Appointment Created:", response.data);
-            alert(isAdmin ? "Appointment confirmed!" : "Appointment requested and pending approval.");
-
-            setAppointments((prevAppointments) => [
-                ...prevAppointments,
-                {
-                    id: response.data.id,
-                    title: `${response.data.client?.first_name ?? "Unknown"} (${response.data.status})`,
-                    start: moment(`${response.data.date}T${response.data.time}`).toDate(),
-                    end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),  // ✅ Ensure correct end_time
-                    status: response.data.status,
-                    extendedAppt: response.data
-                }
-            ]);
+      let response;
+      if (selectedEvent) {
+        if (isAdmin) {
+          requestData.status = "confirmed";
+          requestData.requires_approval = false;
         }
-
-        handleCloseModal();
+        response = await axios.patch(
+          `/appointments/${selectedEvent.id}/reschedule/`,
+          requestData,
+          { headers: { "X-CSRFToken": await getCSRFToken() } }
+        );
+        alert("Appointment rescheduled successfully.");
+        setAppointments((prevAppointments) =>
+          prevAppointments.map((appt) =>
+            appt.id === selectedEvent.id
+              ? {
+                  ...appt,
+                  start: moment(`${response.data.date}T${response.data.time}`).toDate(),
+                  end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),
+                  status: response.data.status,
+                  extendedAppt: response.data,
+                }
+              : appt
+          )
+        );
+      } else {
+        response = await axios.post(
+          "/appointments/",
+          requestData,
+          { headers: { "X-CSRFToken": await getCSRFToken() } }
+        );
+        alert(isAdmin ? "Appointment confirmed!" : "Appointment requested and pending approval.");
+        setAppointments((prevAppointments) => [
+          ...prevAppointments,
+          {
+            id: response.data.id,
+            title: `${response.data.client?.first_name ?? "Unknown"} (${response.data.status})`,
+            start: moment(`${response.data.date}T${response.data.time}`).toDate(),
+            end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),
+            status: response.data.status,
+            extendedAppt: response.data,
+          },
+        ]);
+      }
+      handleCloseModal();
     } catch (err) {
-        console.error("❌ Error saving appointment:", err);
-        console.error("Full error response:", err.response?.data);
-        alert(JSON.stringify(err.response?.data, null, 2) || "Error saving appointment.");
+      console.error("Error saving appointment:", err);
+      alert(JSON.stringify(err.response?.data, null, 2) || "Error saving appointment.");
     }
-};
+  };
 
+  // New function to mark an appointment as Completed
+  const handleMarkCompleted = async () => {
+    if (!selectedEvent) {
+      alert("No appointment selected");
+      return;
+    }
+    try {
+      const requestData = { status: "completed" };
+      const response = await axios.patch(
+        `/appointments/${selectedEvent.id}/reschedule/`,
+        requestData,
+        { headers: { "X-CSRFToken": await getCSRFToken() } }
+      );
+      alert("Appointment marked as Completed.");
+      setAppointments((prevAppointments) =>
+        prevAppointments.map((appt) =>
+          appt.id === selectedEvent.id
+            ? {
+                ...appt,
+                start: moment(`${response.data.date}T${response.data.time}`).toDate(),
+                end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),
+                status: response.data.status,
+                extendedAppt: response.data,
+              }
+            : appt
+        )
+      );
+      handleCloseModal();
+    } catch (err) {
+      console.error("Error marking appointment as completed:", err);
+      alert("Error marking appointment as completed.");
+    }
+  };
 
-  // -------------------------------------------------
-  // Time Range for the Calendar
-  // -------------------------------------------------
+  // New function to mark an appointment as No Show
+  const handleMarkNoShow = async () => {
+    if (!selectedEvent) {
+      alert("No appointment selected");
+      return;
+    }
+    try {
+      const requestData = { status: "no_show" };
+      const response = await axios.patch(
+        `/appointments/${selectedEvent.id}/reschedule/`,
+        requestData,
+        { headers: { "X-CSRFToken": await getCSRFToken() } }
+      );
+      alert("Appointment marked as No Show.");
+      setAppointments((prevAppointments) =>
+        prevAppointments.map((appt) =>
+          appt.id === selectedEvent.id
+            ? {
+                ...appt,
+                start: moment(`${response.data.date}T${response.data.time}`).toDate(),
+                end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),
+                status: response.data.status,
+                extendedAppt: response.data,
+              }
+            : appt
+        )
+      );
+      handleCloseModal();
+    } catch (err) {
+      console.error("Error marking appointment as no show:", err);
+      alert("Error marking appointment as no show.");
+    }
+  };
+
   function FormatsAgendaTimeRangeFormats() {
     function getMinTime() {
       const min = new Date();
@@ -348,9 +326,6 @@ const AppointmentCalendarPage = () => {
   }
   const timeFormats = FormatsAgendaTimeRangeFormats();
 
-  // -------------------------------------------------
-  // Render
-  // -------------------------------------------------
   return (
     <Box p={2}>
       <Typography variant="h4" gutterBottom>
@@ -381,58 +356,35 @@ const AppointmentCalendarPage = () => {
 
         <DialogContent>
           <Grid container spacing={2}>
-            {/* 1) Autocomplete or New Client Toggle */}
             {!isNewClient && (
               <Grid item xs={12}>
                 <Autocomplete
                   value={selectedClient}
-                  onChange={(event, newValue) => {
-                    setSelectedClient(newValue);
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setSearchQuery(newInputValue);
-                  }}
+                  onChange={(event, newValue) => setSelectedClient(newValue)}
+                  onInputChange={(event, newInputValue) => setSearchQuery(newInputValue)}
                   options={searchResults}
                   getOptionLabel={(option) =>
                     `${option.first_name} ${option.last_name} (${option.email})`
                   }
                   isOptionEqualToValue={(option, value) => option.id === value.id}
                   renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Search or Select Client"
-                      variant="outlined"
-                    />
+                    <TextField {...params} label="Search or Select Client" variant="outlined" />
                   )}
                 />
               </Grid>
             )}
-
-            {/* Toggle Button */}
             <Grid item xs={12}>
               <Button
                 variant="outlined"
                 onClick={() => {
                   setIsNewClient(!isNewClient);
-                  if (!isNewClient) {
-                    // If we are switching to "new client", clear out the old data
-                    setSelectedClient(null);
-                  } else {
-                    // If switching back to existing, clear newClientData
-                    setNewClientData({
-                      first_name: "",
-                      last_name: "",
-                      email: "",
-                      phone: "",
-                    });
-                  }
+                  if (!isNewClient) setSelectedClient(null);
+                  else setNewClientData({ first_name: "", last_name: "", email: "", phone: "" });
                 }}
               >
                 {isNewClient ? "Use Existing Client" : "Create New Client"}
               </Button>
             </Grid>
-
-            {/* 2) New Client Fields (Only Shows When isNewClient = true) */}
             {isNewClient && (
               <>
                 <Grid item xs={6}>
@@ -441,10 +393,7 @@ const AppointmentCalendarPage = () => {
                     fullWidth
                     value={newClientData.first_name}
                     onChange={(e) =>
-                      setNewClientData({
-                        ...newClientData,
-                        first_name: e.target.value,
-                      })
+                      setNewClientData({ ...newClientData, first_name: e.target.value })
                     }
                   />
                 </Grid>
@@ -454,10 +403,7 @@ const AppointmentCalendarPage = () => {
                     fullWidth
                     value={newClientData.last_name}
                     onChange={(e) =>
-                      setNewClientData({
-                        ...newClientData,
-                        last_name: e.target.value,
-                      })
+                      setNewClientData({ ...newClientData, last_name: e.target.value })
                     }
                   />
                 </Grid>
@@ -467,10 +413,7 @@ const AppointmentCalendarPage = () => {
                     fullWidth
                     value={newClientData.email}
                     onChange={(e) =>
-                      setNewClientData({
-                        ...newClientData,
-                        email: e.target.value,
-                      })
+                      setNewClientData({ ...newClientData, email: e.target.value })
                     }
                   />
                 </Grid>
@@ -480,25 +423,20 @@ const AppointmentCalendarPage = () => {
                     fullWidth
                     value={newClientData.phone}
                     onChange={(e) =>
-                      setNewClientData({
-                        ...newClientData,
-                        phone: e.target.value,
-                      })
+                      setNewClientData({ ...newClientData, phone: e.target.value })
                     }
                   />
                 </Grid>
               </>
             )}
-
-            {/* 3) Artist Selection */}
             <Grid item xs={12}>
               <FormControl fullWidth disabled={user?.role === "employee"}>
-                <InputLabel>Employee</InputLabel>  {/* ✅ Update label */}
+                <InputLabel>Employee</InputLabel>
                 <Select
-                  value={formData.employee || ""}  // ✅ Ensure correct state field is used
-                  onChange={(e) => setFormData({ ...formData, employee: e.target.value })}  // ✅ Set "employee", not "artist"
+                  value={formData.employee || ""}
+                  onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
                 >
-                  {artists.map((a) => (  // ❌ Rename "artists" to "employees" if backend has changed
+                  {artists.map((a) => (
                     <MenuItem key={a.id} value={a.id}>
                       {a.username}
                     </MenuItem>
@@ -506,9 +444,6 @@ const AppointmentCalendarPage = () => {
                 </Select>
               </FormControl>
             </Grid>
-
-
-            {/* 4) Service Selection */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Service</InputLabel>
@@ -524,10 +459,7 @@ const AppointmentCalendarPage = () => {
                 </Select>
               </FormControl>
             </Grid>
-
-
-            {/* Custom Price Field */}
-            <Grid item xs={12} md={6} >
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Price"
                 type="number"
@@ -536,18 +468,13 @@ const AppointmentCalendarPage = () => {
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               />
             </Grid>
-
-
-            {/* 5) Date & Time */}
             <Grid item xs={4}>
               <TextField
                 label="Date"
                 type="date"
                 fullWidth
                 value={formData.date || moment().format("YYYY-MM-DD")}
-                onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </Grid>
             <Grid item xs={4}>
@@ -556,9 +483,7 @@ const AppointmentCalendarPage = () => {
                 type="time"
                 fullWidth
                 value={formData.startTime || "00:00"}
-                onChange={(e) =>
-                  setFormData({ ...formData, startTime: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
               />
             </Grid>
             <Grid item xs={4}>
@@ -566,14 +491,10 @@ const AppointmentCalendarPage = () => {
                 label="End Time"
                 type="time"
                 fullWidth
-                value={formData.endTime || "00:00"}  // ✅ Ensure valid fallback
-                onChange={(e) =>
-                  setFormData({ ...formData, endTime: e.target.value })
-                }
+                value={formData.endTime || "00:00"}
+                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
               />
             </Grid>
-
-            {/* 6) Notes */}
             <Grid item xs={12}>
               <TextField
                 label="Notes"
@@ -581,9 +502,7 @@ const AppointmentCalendarPage = () => {
                 rows={2}
                 fullWidth
                 value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
             </Grid>
           </Grid>
@@ -596,6 +515,16 @@ const AppointmentCalendarPage = () => {
           <Button onClick={handleSaveAppointment} color="primary">
             {selectedEvent ? "Save Changes" : "Create"}
           </Button>
+          {selectedEvent && (
+            <>
+              <Button onClick={handleMarkCompleted} color="success">
+                Completed
+              </Button>
+              <Button onClick={handleMarkNoShow} color="error">
+                No Show
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

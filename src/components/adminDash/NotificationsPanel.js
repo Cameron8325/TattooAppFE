@@ -72,18 +72,18 @@ const getFieldValues = (notification, field) => {
  * Returns time values (combining start and end times) for previous and current states.
  */
 const getTimeValues = (notification) => {
-  const prevStart = notification.previous_details && notification.previous_details.time
-    ? notification.previous_details.time
-    : notification.appointment_details.time;
-  const prevEnd = notification.previous_details && notification.previous_details.end_time
-    ? notification.previous_details.end_time
-    : notification.appointment_details.end_time;
-  const currentStart = notification.changes && notification.changes.time && notification.changes.time.new
-    ? notification.changes.time.new
-    : notification.appointment_details.time;
-  const currentEnd = notification.changes && notification.changes.end_time && notification.changes.end_time.new
-    ? notification.changes.end_time.new
-    : notification.appointment_details.end_time;
+  const prevStart =
+    (notification.previous_details && notification.previous_details.time) ||
+    notification.appointment_details.time;
+  const prevEnd =
+    (notification.previous_details && notification.previous_details.end_time) ||
+    notification.appointment_details.end_time;
+  const currentStart =
+    (notification.changes && notification.changes.time && notification.changes.time.new) ||
+    notification.appointment_details.time;
+  const currentEnd =
+    (notification.changes && notification.changes.end_time && notification.changes.end_time.new) ||
+    notification.appointment_details.end_time;
 
   return {
     previous: `${prevStart} - ${prevEnd}`,
@@ -92,23 +92,17 @@ const getTimeValues = (notification) => {
 };
 
 /**
- * Renders a single table that displays the appointment details with two columns:
- * one for the previous (last confirmed) value and one for the new (requested) value.
- * Changed fields are highlighted.
+ * Renders a table displaying appointment details with previous and new values.
  */
 const renderDiffTable = (notification) => {
-  // For fields that don't change in our flow, we simply display the same values.
-  // We assume that client and artist fields don't change with update requests.
   const client = notification.appointment_details.client;
   const artist = notification.appointment_details.artist;
-
   const serviceValues = getFieldValues(notification, "service");
   const priceValues = getFieldValues(notification, "price");
   const dateValues = getFieldValues(notification, "date");
   const notesValues = getFieldValues(notification, "notes");
   const timeValues = getTimeValues(notification);
 
-  // Array of rows. Each row is an object with label, previous, current.
   const rows = [
     { label: "Client", previous: client, current: client },
     { label: "Artist", previous: artist, current: artist },
@@ -243,14 +237,13 @@ const NotificationsPanel = () => {
                   <TableCell>
                     {notification.action === "created"
                       ? "Created Appointment"
-                      : "Updated Appointment"}
+                      : notification.action === "no_show"
+                        ? "No Show"
+                        : "Updated Appointment"}
                   </TableCell>
                   <TableCell>{new Date(notification.timestamp).toLocaleString()}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={notification.status.toUpperCase()}
-                      color={getStatusColor(notification.status)}
-                    />
+                    <Chip label={notification.status.toUpperCase()} color={getStatusColor(notification.status)} />
                   </TableCell>
                   <TableCell align="right">
                     <Button
@@ -290,7 +283,9 @@ const NotificationsPanel = () => {
               <strong>Action:</strong>{" "}
               {selectedNotification.action === "created"
                 ? "Created Appointment"
-                : "Updated Appointment"}
+                : selectedNotification.action === "no_show"
+                  ? "No Show"
+                  : "Updated Appointment"}
             </Typography>
             <Typography variant="subtitle1" gutterBottom>
               <strong>Timestamp:</strong> {new Date(selectedNotification.timestamp).toLocaleString()}
@@ -298,12 +293,11 @@ const NotificationsPanel = () => {
             <Typography variant="subtitle1" gutterBottom>
               <strong>Status:</strong> {selectedNotification.status.toUpperCase()}
             </Typography>
-
-            {/* Render the combined diff table with Previous and New values */}
             {selectedNotification.appointment_details && renderDiffTable(selectedNotification)}
           </DialogContent>
           <DialogActions>
-            {selectedNotification.status === "pending" && (
+            {/* Only show Approve/Decline buttons if NOT a no_show notification */}
+            {selectedNotification.action !== "no_show" && selectedNotification.status === "pending" && (
               <>
                 <Button
                   variant="contained"
