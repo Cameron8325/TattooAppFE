@@ -14,7 +14,13 @@ const LoginPage = () => {
     try {
       const response = await login(credentials); // ✅ Calls AuthContext login
       if (response) {
-        navigate("/dashboard"); // ✅ Redirects after setting user state
+        if (response.role === "employee") {
+          navigate("/employee-dashboard");
+        } else if (response.role === "admin") {
+          navigate("/dashboard");
+        } else {
+          navigate("/access-denied")
+        }
       }
     } catch (error) {
       setError("Invalid username or password.");
