@@ -48,6 +48,39 @@ const getEmployeeName = (employee) => {
   return `Employee #${employee}`;
 };
 
+const serviceMap = {
+  service_1: "Service 1",
+  service_2: "Service 2",
+  service_3: "Service 3",
+};
+
+const formatTime = (hhmmss) => {
+  if (!hhmmss || typeof hhmmss !== "string") return hhmmss;
+  const date = new Date(`1970-01-01T${hhmmss}`);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date)) return dateStr; // fallback if it's not a real date
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+};
+
+const normalize = (field, value) => {
+  if (!value) return "";
+  if (field === "service") return serviceMap[value] || value;
+  if (field === "time" || field === "end_time") return formatTime(value);
+  if (field === "date") return formatDate(value);
+  return value;
+};
+
+
+
 /**
  * Returns an object with previous and current values for a given field.
  * For non-time fields.
@@ -55,41 +88,54 @@ const getEmployeeName = (employee) => {
 const getFieldValues = (notification, field) => {
   let previous = "";
   let current = "";
+
   if (notification.previous_details && notification.previous_details[field] !== undefined) {
     previous = notification.previous_details[field];
   } else if (notification.appointment_details && notification.appointment_details[field] !== undefined) {
     previous = notification.appointment_details[field];
   }
+
   if (notification.changes && notification.changes[field] && notification.changes[field].new !== undefined) {
     current = notification.changes[field].new;
   } else if (notification.appointment_details && notification.appointment_details[field] !== undefined) {
     current = notification.appointment_details[field];
   }
-  return { previous, current };
+
+  return {
+    previous: normalize(field, previous),
+    current: normalize(field, current),
+  };
 };
+
 
 /**
  * Returns time values (combining start and end times) for previous and current states.
  */
+const isRawTime = (val) => typeof val === "string" && /^\d{2}:\d{2}(:\d{2})?$/.test(val);
+
+const safeFormat = (field, val) => isRawTime(val) ? normalize(field, val) : val;
+
 const getTimeValues = (notification) => {
-  const prevStart =
-    (notification.previous_details && notification.previous_details.time) ||
-    notification.appointment_details.time;
-  const prevEnd =
-    (notification.previous_details && notification.previous_details.end_time) ||
-    notification.appointment_details.end_time;
-  const currentStart =
-    (notification.changes && notification.changes.time && notification.changes.time.new) ||
-    notification.appointment_details.time;
-  const currentEnd =
-    (notification.changes && notification.changes.end_time && notification.changes.end_time.new) ||
-    notification.appointment_details.end_time;
+  const prevStart = safeFormat("time",
+    (notification.previous_details?.time) || notification.appointment_details.time
+  );
+  const prevEnd = safeFormat("end_time",
+    (notification.previous_details?.end_time) || notification.appointment_details.end_time
+  );
+
+  const currentStart = safeFormat("time",
+    (notification.changes?.time?.new) || notification.appointment_details.time
+  );
+  const currentEnd = safeFormat("end_time",
+    (notification.changes?.end_time?.new) || notification.appointment_details.end_time
+  );
 
   return {
     previous: `${prevStart} - ${prevEnd}`,
     current: `${currentStart} - ${currentEnd}`,
   };
 };
+
 
 /**
  * Renders a table displaying appointment details with previous and new values.
