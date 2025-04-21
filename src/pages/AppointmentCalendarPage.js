@@ -169,7 +169,7 @@ const AppointmentCalendarPage = () => {
       status: isAdmin ? "confirmed" : "pending",
       requires_approval: !isAdmin,
     };
-
+  
     if (isNewClient) {
       if (!newClientData.first_name || !newClientData.last_name || !newClientData.email) {
         alert("Error: New client information is incomplete.");
@@ -190,7 +190,7 @@ const AppointmentCalendarPage = () => {
       }
       requestData.client_id = clientId;
     }
-
+  
     try {
       let response;
       if (selectedEvent) {
@@ -198,17 +198,21 @@ const AppointmentCalendarPage = () => {
           requestData.status = "confirmed";
           requestData.requires_approval = false;
         }
+  
         response = await axios.patch(
           `/appointments/${selectedEvent.id}/reschedule/`,
           requestData,
           { headers: { "X-CSRFToken": await getCSRFToken() } }
         );
+  
         alert("Appointment rescheduled successfully.");
+  
         setAppointments((prevAppointments) =>
           prevAppointments.map((appt) =>
             appt.id === selectedEvent.id
               ? {
                   ...appt,
+                  title: `${response.data.client?.first_name ?? "Unknown"} (${response.data.status})`,
                   start: moment(`${response.data.date}T${response.data.time}`).toDate(),
                   end: moment(`${response.data.date}T${response.data.end_time}`).toDate(),
                   status: response.data.status,
@@ -236,13 +240,14 @@ const AppointmentCalendarPage = () => {
           },
         ]);
       }
+  
       handleCloseModal();
     } catch (err) {
       console.error("Error saving appointment:", err);
       alert(JSON.stringify(err.response?.data, null, 2) || "Error saving appointment.");
     }
   };
-
+  
   // New function to mark an appointment as Completed
   const handleMarkCompleted = async () => {
     if (!selectedEvent) {
