@@ -6,16 +6,20 @@ const KeyMetrics = () => {
   const [metrics, setMetrics] = useState([]);
 
   useEffect(() => {
-    axios.get("/api/metrics/overview/")
-      .then((response) => setMetrics(response.data))
-      .catch(() => {
-        setMetrics([
-          { metric: "Revenue", value: "$15,000" },
-          { metric: "Clients Served", value: "120" },
-          { metric: "Appointments", value: "45" },
-        ]);
+    axios.get("metrics/")
+      .then((response) => {
+        const data = response.data;
+        const formatted = Object.entries(data).map(([metric, value]) => ({
+          metric,
+          value,
+        }));
+        setMetrics(formatted);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch metrics:", err);
       });
   }, []);
+  
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
