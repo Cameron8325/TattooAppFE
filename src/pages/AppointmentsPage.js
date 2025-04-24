@@ -1,162 +1,149 @@
-import React, { useEffect, useState, useCallback } from 'react';
+// src/pages/AppointmentsPage.js
+import React, { useEffect, useState, useCallback, useContext } from 'react';
+import {
+  Box,
+  Button,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Snackbar,
+  Alert,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button, Box, Modal, TextField, Typography, Grid } from '@mui/material';
 import axios from '../services/axios';
+import { AuthContext } from '../context/authContext';
+import AppointmentModal from '../components/adminDash/AppointmentModal';
 
-// Helper function to format date in mm/dd/yyyy format
-const formatDate = (dateStr) => {
+// Helpers for formatting
+const formatDate = dateStr => {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-  const dd = date.getDate().toString().padStart(2, '0');
-  const yyyy = date.getFullYear();
-  return `${mm}/${dd}/${yyyy}`;
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 };
-
-// Helper function to format time to 12-hour format with AM/PM
-const formatTime = (timeStr) => {
+const formatTime = timeStr => {
   if (!timeStr) return '';
-  const [hourStr, minute] = timeStr.split(':');
-  let hour = parseInt(hourStr, 10);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12;
-  if (hour === 0) hour = 12;
-  return `${hour}:${minute} ${ampm}`;
+  let [h, m] = timeStr.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
 };
 
 const AppointmentsPage = () => {
-  const [appointments, setAppointments] = useState([]);
-  const [openModal, setOpenModal] = useState(false);
-  const [currentAppointment, setCurrentAppointment] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
-  const [formData, setFormData] = useState({
-    client_id: '',
-    employee: '',
-    service: '',
-    date: '',
-    time: '',
-    end_time: '',
-    price: '',
-    status: '',
-    notes: '',
-  });
+  const { user, loading } = useContext(AuthContext);
 
-  // Fetch appointments based on whether we're showing archived or upcoming
+  // ── Hooks (always run) ─────────────────────────────────────────
+  const [appointments, setAppointments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [openModal, setOpenModal] = useState(false);
+  const [modalData, setModalData] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
   const fetchAppointments = useCallback(() => {
     const url = `/appointments/${showArchived ? '?archived=true' : ''}`;
     axios.get(url)
-      .then(response => setAppointments(response.data))
-      .catch(error => console.error('Error fetching appointments:', error));
+      .then(res => setAppointments(res.data))
+      .catch(() => {
+        setSnackbar({ open: true, message: 'Error fetching appointments', severity: 'error' });
+      });
   }, [showArchived]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      axios.get('/users/?role=employee')
+        .then(res => setEmployees(res.data))
+        .catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+  // ────────────────────────────────────────────────────────────────
 
-  // Handle opening/closing the modal for editing/creating an appointment
-  const handleOpenModal = (appointment = null) => {
-    setCurrentAppointment(appointment);
+  // don’t render until auth state is known
+  if (loading) return null;
+  if (!user) return null;
+
+  // Handlers
+  const handleOpenModal = appt => {
+    setModalData(appt || null);
     setOpenModal(true);
   };
-
-  const handleCloseModal = () => {
-    setCurrentAppointment(null);
+  const handleCloseModal = () => setOpenModal(false);
+  const handleSave = () => {
+    fetchAppointments();
     setOpenModal(false);
+    setSnackbar({
+      open: true,
+      message: modalData ? 'Appointment updated' : 'Appointment created',
+      severity: 'success'
+    });
   };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    const payload = {
-      client_id: formData.client_id,
-      employee: formData.employee,
-      service: formData.service,
-      date: formData.date,
-      time: formData.time,
-      end_time: formData.end_time,
-      price: formData.price,
-      status: formData.status,
-      notes: formData.notes,
-    };
-
-    if (currentAppointment) {
-      axios.put(`/appointments/${currentAppointment.id}/`, payload)
-        .then(() => {
-          setAppointments(prev =>
-            prev.map(item =>
-              item.id === currentAppointment.id ? { ...item, ...payload } : item
-            )
-          );
-        })
-        .catch(error => console.error('Error updating appointment:', error));
-    } else {
-      axios.post('/appointments/', payload)
-        .then(response => {
-          setAppointments(prev => [...prev, response.data]);
-        })
-        .catch(error => console.error('Error creating appointment:', error));
-    }
-    handleCloseModal();
-  };
-
-  const handleDelete = (id) => {
+  const handleDelete = id => {
+    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
     axios.delete(`/appointments/${id}/`)
       .then(() => {
-        setAppointments(prev => prev.filter(item => item.id !== id));
+        fetchAppointments();
+        setSnackbar({ open: true, message: 'Appointment deleted', severity: 'info' });
       })
-      .catch(error => console.error('Error deleting appointment:', error));
+      .catch(() => {
+        setSnackbar({ open: true, message: 'Error deleting appointment', severity: 'error' });
+      });
   };
+  const handleCloseSnackbar = () => setSnackbar(s => ({ ...s, open: false }));
 
-  // Prepare appointment data with formatted date/time and full names
-  const formattedAppointments = appointments.map(appointment => ({
-    id: appointment.id,
-    clientName: appointment.client
-      ? `${appointment.client.first_name} ${appointment.client.last_name}`
+  // Prepare rows
+  const formatted = appointments.map(a => ({
+    id: a.id,
+    clientName: a.client
+      ? `${a.client.first_name} ${a.client.last_name}`
       : 'N/A',
-    employeeName: appointment.employee_name || 'N/A',  // Use employee_name from API
-    service: appointment.service_display || 'N/A',  // Use service_display for human-readable name
-    formattedDate: formatDate(appointment.date),
-    formattedTime: formatTime(appointment.time),
-    formattedEndTime: formatTime(appointment.end_time),
-    price: appointment.price || 0,
-    status: appointment.status || 'N/A',
-}));
+    employeeName: a.employee_name || 'N/A',
+    employeeId: a.employee,           // for filter
+    service: a.service_display || 'N/A',
+    date: formatDate(a.date),
+    time: formatTime(a.time),
+    endTime: formatTime(a.end_time),
+    price: a.price ?? 0,
+    status: a.status || 'N/A',
+  }));
 
+  // Apply employee filter
+  const rows = formatted.filter(
+    r => selectedEmployee === 'all' || r.employeeId === selectedEmployee
+  );
 
-  // Define columns for the DataGrid
+  // Columns
   const columns = [
-    { field: 'id', headerName: 'ID', width: 70 },
     { field: 'clientName', headerName: 'Client', width: 150 },
     { field: 'employeeName', headerName: 'Employee', width: 150 },
     { field: 'service', headerName: 'Service', width: 150 },
-    { field: 'formattedDate', headerName: 'Date', width: 130 },
-    { field: 'formattedTime', headerName: 'Time', width: 130 },
-    { field: 'formattedEndTime', headerName: 'End Time', width: 130 },
-    { field: 'price', headerName: 'Price', width: 100 },
-    { field: 'status', headerName: 'Status', width: 130 },
+    { field: 'date', headerName: 'Date', width: 120 },
+    { field: 'time', headerName: 'Start Time', width: 130 },
+    { field: 'endTime', headerName: 'End Time', width: 130 },
+    { field: 'price', headerName: 'Price', width: 100, type: 'number' },
+    { field: 'status', headerName: 'Status', width: 120 },
     {
       field: 'actions',
       headerName: 'Actions',
       width: 180,
-      renderCell: (params) => (
+      sortable: false,
+      renderCell: params => (
         <Box>
           <Button
-            variant="contained"
-            color="primary"
             size="small"
             onClick={() => handleOpenModal(params.row)}
-            style={{ marginRight: 8 }}
+            sx={{ mr: 1 }}
           >
             Edit
           </Button>
           <Button
-            variant="contained"
-            color="secondary"
             size="small"
+            color="error"
             onClick={() => handleDelete(params.row.id)}
           >
             Delete
@@ -172,12 +159,10 @@ const AppointmentsPage = () => {
         Appointments
       </Typography>
 
-      {/* Toggle buttons for Upcoming and Archived */}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Button
           variant={!showArchived ? 'contained' : 'outlined'}
           onClick={() => setShowArchived(false)}
-          sx={{ mr: 2 }}
         >
           Upcoming
         </Button>
@@ -187,19 +172,35 @@ const AppointmentsPage = () => {
         >
           Archived
         </Button>
+
+        {user.role === 'admin' && (
+          <FormControl size="small">
+            <InputLabel>Employee</InputLabel>
+            <Select
+              label="Employee"
+              value={selectedEmployee}
+              onChange={e => setSelectedEmployee(e.target.value)}
+            >
+              <MenuItem value="all">All Employees</MenuItem>
+              {employees.map(emp => (
+                <MenuItem key={emp.id} value={emp.id}>
+                  {emp.username || emp.full_name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Button variant="contained" onClick={() => handleOpenModal(null)}>
+          Create Appointment
+        </Button>
       </Box>
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => handleOpenModal()}
-        sx={{ mb: 2 }}
-      >
-        Create Appointment
-      </Button>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
-          rows={formattedAppointments}
+          rows={rows}
           columns={columns}
           pageSize={7}
           rowsPerPageOptions={[7]}
@@ -207,44 +208,27 @@ const AppointmentsPage = () => {
         />
       </div>
 
-      <Modal open={openModal} onClose={handleCloseModal}>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 500,
-            bgcolor: 'background.paper',
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-          }}
+      <AppointmentModal
+        open={openModal}
+        initialData={modalData}
+        onClose={handleCloseModal}
+        onSave={handleSave}
+        user={user}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
-          <Typography variant="h6" marginBottom={2}>
-            {currentAppointment ? 'Edit Appointment' : 'Create Appointment'}
-          </Typography>
-          <form onSubmit={handleFormSubmit}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  label="Status"
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button type="submit" variant="contained" color="primary" fullWidth>
-                  {currentAppointment ? 'Update Appointment' : 'Create Appointment'}
-                </Button>
-              </Grid>
-            </Grid>
-          </form>
-        </Box>
-      </Modal>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
