@@ -1,4 +1,3 @@
-// src/pages/AppointmentsPage.js
 import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   Box,
