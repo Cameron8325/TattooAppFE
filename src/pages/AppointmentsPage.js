@@ -43,13 +43,23 @@ const AppointmentsPage = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const fetchAppointments = useCallback(() => {
-    const url = `/appointments/${showArchived ? '?archived=true' : ''}`;
+    const urlParams = new URLSearchParams();
+    if (showArchived) urlParams.append('archived', 'true');
+    if (selectedEmployee !== 'all') urlParams.append('employee', selectedEmployee);
+  
+    const url = `/appointments/?${urlParams.toString()}`;
+  
     axios.get(url)
       .then(res => setAppointments(res.data))
       .catch(() => {
-        setSnackbar({ open: true, message: 'Error fetching appointments', severity: 'error' });
+        setSnackbar({
+          open: true,
+          message: 'Error fetching appointments',
+          severity: 'error'
+        });
       });
-  }, [showArchived]);
+  }, [showArchived, selectedEmployee]);
+  
 
   useEffect(() => {
     if (user?.role === 'admin') {
