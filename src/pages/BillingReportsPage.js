@@ -1,130 +1,138 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-    Box,
-    Typography,
-    Paper,
-    Grid,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
+    Box, Typography, Paper, Grid, Button, TextField, MenuItem,
+    Accordion, AccordionSummary, AccordionDetails, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import axios from '../services/axios';
 
-const BillingReportsPage = () => {
-    const [revenue, setRevenue] = useState(0);
-    const [overduePayments, setOverduePayments] = useState([]);
-    const [reportData, setReportData] = useState([]);
+const months = [
+    { value: 1, label: 'January' }, { value: 2, label: 'February' },
+    { value: 3, label: 'March' }, { value: 4, label: 'April' },
+    { value: 5, label: 'May' }, { value: 6, label: 'June' },
+    { value: 7, label: 'July' }, { value: 8, label: 'August' },
+    { value: 9, label: 'September' }, { value: 10, label: 'October' },
+    { value: 11, label: 'November' }, { value: 12, label: 'December' },
+];
 
-    useEffect(() => {
-        // Fetch financial data
-        axios.get('/billing/summary/')
-            .then((response) => {
-                setRevenue(response.data.total_revenue);
-                setOverduePayments(response.data.overdue_payments);
-                setReportData(response.data.report_data);
-            })
-            .catch(() => {
-                // Fallback mock data
-                setRevenue(12500.00);
-                setOverduePayments([
-                    { id: 1, client: 'John Doe', amount: 200.00, due_date: '2025-01-10' },
-                    { id: 2, client: 'Jane Smith', amount: 150.00, due_date: '2025-01-12' },
-                ]);
-                setReportData([
-                    { service: 'Tattoo', artist: 'Artist A', revenue: 7500.00 },
-                    { service: 'Piercing', artist: 'Artist B', revenue: 5000.00 },
-                ]);
+const BillingReportsPage = () => {
+    const [month, setMonth] = useState(new Date().getMonth() + 1);
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [feeType, setFeeType] = useState('flat');
+    const [feeValue, setFeeValue] = useState(20);
+    const [reportData, setReportData] = useState(null);
+
+    const handleFetchReport = () => {
+        const payload = { month, year, fee_type: feeType, fee_value: feeValue };
+        axios.post('/billing/summary/', payload)
+            .then((response) => setReportData(response.data))
+            .catch((error) => {
+                console.error('Error fetching report:', error);
+                setReportData(null);
             });
-    }, []);
+    };
 
     return (
         <Box sx={{ padding: 3 }}>
-            <Typography variant="h4" gutterBottom>
-                Billing and Reports
-            </Typography>
+            <Typography variant="h4" gutterBottom>Billing and Reports</Typography>
 
-            <Grid container spacing={3}>
-                {/* Total Revenue */}
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ padding: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                            Total Revenue
-                        </Typography>
-                        <Typography variant="h4" color="primary">
-                            ${revenue.toFixed(2)}
-                        </Typography>
-                    </Paper>
+            <Paper sx={{ padding: 2, marginBottom: 2 }}>
+                <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                        <TextField
+                            select fullWidth label="Month"
+                            value={month}
+                            onChange={(e) => setMonth(Number(e.target.value))}
+                        >
+                            {months.map((m) => (
+                                <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                        <TextField
+                            fullWidth label="Year"
+                            type="number"
+                            value={year}
+                            onChange={(e) => setYear(Number(e.target.value))}
+                        />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                        <TextField
+                            select fullWidth label="Fee Type"
+                            value={feeType}
+                            onChange={(e) => setFeeType(e.target.value)}
+                        >
+                            <MenuItem value="flat">Flat Fee</MenuItem>
+                            <MenuItem value="percentage">Percentage</MenuItem>
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="Fee Value"
+                            value={feeValue}
+                            onChange={(e) => setFeeValue(e.target.value)}
+                            helperText="Enter flat fee or percentage value"
+                            inputProps={{ inputMode: 'decimal', pattern: '[0-9]*[.]?[0-9]*' }}
+                        />
+
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Button variant="contained" onClick={handleFetchReport}>
+                            Generate Report
+                        </Button>
+                    </Grid>
                 </Grid>
+            </Paper>
 
-                {/* Overdue Payments */}
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ padding: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                            Overdue Payments
-                        </Typography>
-                        {overduePayments.length > 0 ? (
-                            <TableContainer>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Client</TableCell>
-                                            <TableCell>Amount</TableCell>
-                                            <TableCell>Due Date</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {overduePayments.map((payment) => (
-                                            <TableRow key={payment.id}>
-                                                <TableCell>{payment.client}</TableCell>
-                                                <TableCell>${payment.amount.toFixed(2)}</TableCell>
-                                                <TableCell>{payment.due_date}</TableCell>
+            {reportData && (
+                <Box>
+                    <Paper sx={{ padding: 2, marginBottom: 2 }}>
+                        <Typography variant="h6">Shop Summary</Typography>
+                        <Typography>Total Revenue: ${reportData.shop_total_revenue.toFixed(2)}</Typography>
+                        <Typography>Total Shop Earnings: ${reportData.shop_total_earnings.toFixed(2)}</Typography>
+                        <Typography>Total Appointments: {reportData.shop_total_appointments}</Typography>
+                    </Paper>
+
+                    {reportData.report.map((employee, idx) => (
+                        <Accordion key={idx}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography>
+                                    Employee ID: {employee.employee_id} - Total: ${employee.total_earned.toFixed(2)} - Appointments: {employee.total_appointments}
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <TableContainer>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Client</TableCell>
+                                                <TableCell>Date</TableCell>
+                                                <TableCell>Price</TableCell>
+                                                <TableCell>Shop Cut</TableCell>
+                                                <TableCell>Artist Cut</TableCell>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        ) : (
-                            <Typography>No overdue payments.</Typography>
-                        )}
-                    </Paper>
-                </Grid>
-
-                {/* Revenue Breakdown */}
-                <Grid item xs={12}>
-                    <Paper elevation={3} sx={{ padding: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                            Revenue Breakdown
-                        </Typography>
-                        {reportData.length > 0 ? (
-                            <TableContainer>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Service</TableCell>
-                                            <TableCell>Artist</TableCell>
-                                            <TableCell>Revenue</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {reportData.map((row, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell>{row.service}</TableCell>
-                                                <TableCell>{row.artist}</TableCell>
-                                                <TableCell>${row.revenue.toFixed(2)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        ) : (
-                            <Typography>No data available.</Typography>
-                        )}
-                    </Paper>
-                </Grid>
-            </Grid>
+                                        </TableHead>
+                                        <TableBody>
+                                            {employee.appointments.map((appt, i) => (
+                                                <TableRow key={i}>
+                                                    <TableCell>{appt.client_name}</TableCell>
+                                                    <TableCell>{appt.date}</TableCell>
+                                                    <TableCell>${appt.price.toFixed(2)}</TableCell>
+                                                    <TableCell>${appt.shop_cut.toFixed(2)}</TableCell>
+                                                    <TableCell>${appt.artist_cut.toFixed(2)}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </AccordionDetails>
+                        </Accordion>
+                    ))}
+                </Box>
+            )}
         </Box>
     );
 };
