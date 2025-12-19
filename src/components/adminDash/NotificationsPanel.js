@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import axios from "../../services/axios";
+import { formatTime, formatDate } from "../../utils/dateTime";
+import { SERVICE_LABELS } from "../../constants";
 
 // Updated deduplication: for each appointment, if there’s any pending notification, use that;
 // otherwise, use the most recent notification.
@@ -48,32 +50,9 @@ const getEmployeeName = (employee) => {
   return `Employee #${employee}`;
 };
 
-const serviceMap = {
-  service_1: "Service 1",
-  service_2: "Service 2",
-  service_3: "Service 3",
-};
-
-const formatTime = (hhmmss) => {
-  if (!hhmmss || typeof hhmmss !== "string") return hhmmss;
-  const date = new Date(`1970-01-01T${hhmmss}`);
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  if (isNaN(date)) return dateStr; // fallback if it's not a real date
-  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-};
-
 const normalize = (field, value) => {
   if (!value) return "";
-  if (field === "service") return serviceMap[value] || value;
+  if (field === "service") return SERVICE_LABELS[value] || value;
   if (field === "time" || field === "end_time") return formatTime(value);
   if (field === "date") return formatDate(value);
   return value;

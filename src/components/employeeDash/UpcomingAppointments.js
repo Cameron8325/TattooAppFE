@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Box, Typography, Button, Paper, Grid, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel } from "@mui/material";
 import axios from "../../services/axios";
 import { getCSRFToken } from "../../services/authService";
-import moment from "moment";
+import { formatDate } from "../../utils/dateTime";
 
 const UpcomingAppointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -85,7 +85,7 @@ const UpcomingAppointments = () => {
               >
                 <Typography variant="h6">{appt.client.first_name} {appt.client.last_name}</Typography>
                 <Typography variant="body2">Service: {appt.service}</Typography>
-                <Typography variant="body2">Date: {moment(appt.date).format("MMMM D, YYYY")}</Typography>
+                <Typography variant="body2">Date: {formatDate(appt.date)}</Typography>
                 <Typography variant="body2">Time: {appt.time}</Typography>
                 <Typography variant="body2">Status: {appt.status}</Typography>
               </Paper>
@@ -102,7 +102,7 @@ const UpcomingAppointments = () => {
             <>
               <TextField label="Client" fullWidth value={`${selectedAppointment.client.first_name} ${selectedAppointment.client.last_name}`} disabled />
               <TextField label="Service" fullWidth value={selectedAppointment.service} disabled sx={{ mt: 2 }} />
-              <TextField label="Date" fullWidth value={moment(selectedAppointment.date).format("YYYY-MM-DD")} disabled sx={{ mt: 2 }} />
+              <TextField label="Date" fullWidth value={selectedAppointment.date} disabled sx={{ mt: 2 }} />
               <TextField label="Time" fullWidth value={selectedAppointment.time} disabled sx={{ mt: 2 }} />
               <TextField label="Notes" fullWidth multiline rows={3} value={selectedAppointment.notes || "No notes"} disabled sx={{ mt: 2 }} />
             </>

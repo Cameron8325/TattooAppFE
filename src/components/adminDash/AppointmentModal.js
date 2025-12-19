@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "../../services/axios";
-import moment from "moment";
+import { getTodayDate } from "../../utils/dateTime";
 import { getCSRFToken } from "../../services/authService";
 
 const AppointmentModal = ({
@@ -71,7 +71,7 @@ const AppointmentModal = ({
       setSelectedClient(appt.client);
       setIsNewClient(false);
     } else {
-      const today = moment().format("YYYY-MM-DD");
+      const today = getTodayDate();
       setFormData({
         employee: user.role === "admin" ? "" : user.id,
         service: "",

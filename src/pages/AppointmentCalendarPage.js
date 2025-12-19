@@ -5,6 +5,7 @@ import { AuthContext } from "../context/authContext";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import axios from "../services/axios";
 import AppointmentModal from "../components/adminDash/AppointmentModal";
+import { STATUS_COLORS } from "../constants";
 import {
   Box,
   Typography,
@@ -82,11 +83,8 @@ const AppointmentCalendarPage = () => {
   };
 
   const eventPropGetter = e => {
-    let bg = "#9e9e9e";
-    if (e.status === "confirmed") bg = "#4caf50";
-    else if (e.status === "pending") bg = "#ffc107";
-    else if (e.status === "canceled") bg = "#f44336";
-    return { style: { backgroundColor: bg } };
+    const bg = STATUS_COLORS[e.status] || STATUS_COLORS.completed;
+    return { style: { backgroundColor: bg, borderColor: bg } };
   };
 
   return (
