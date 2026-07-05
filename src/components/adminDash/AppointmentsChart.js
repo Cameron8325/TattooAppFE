@@ -8,9 +8,11 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts';
+import { useTheme } from '@mui/material/styles';
 import axios from '../../services/axios.js';
 
 const AppointmentsChart = () => {
+    const theme = useTheme();
     const [data, setData] = useState([]);
 
     useEffect(() => {
@@ -35,7 +37,7 @@ const AppointmentsChart = () => {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="appointments" stroke="#1976d2" activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="appointments" stroke={theme.palette.primary.main} activeDot={{ r: 8 }} />
             </LineChart>
         </ResponsiveContainer>
     );

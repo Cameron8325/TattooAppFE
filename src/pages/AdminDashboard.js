@@ -1,78 +1,49 @@
-import { Grid, Paper, Typography, Box, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+// Uses shared PageContainer + Section shells (design-system layout).
+import { Grid } from '@mui/material';
+import PageContainer from '../components/layout/PageContainer';
+import Section from '../components/layout/Section';
 import AppointmentsChart from '../components/adminDash/AppointmentsChart';
 import KeyMetricsCard from '../components/adminDash/KeyMetricsCard';
 import ArtistPerformanceChart from '../components/adminDash/ArtistPerformanceChart';
 import NotificationsPanel from '../components/adminDash/NotificationsPanel';
 import AppointmentOverview from '../components/adminDash/AppointmentOverview';
 
-const AdminDashboard = () => {
-  const navigate = useNavigate();
-
-  return (
-    <Box sx={{ padding: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Admin Dashboard
-      </Typography>
-      <Grid container spacing={3}>
-        {/* Notifications */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ padding: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Notifications
-            </Typography>
-            <NotificationsPanel />
-          </Paper>
-        </Grid>
-
-        {/* Key Metrics */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ padding: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Key Metrics
-            </Typography>
-            <KeyMetricsCard />
-          </Paper>
-        </Grid>
-
-        {/* Appointment Overview */}
-        <Grid item xs={12}>
-          <Paper elevation={3} sx={{ padding: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Appointment Overview
-            </Typography>
-            <AppointmentOverview />
-          </Paper>
-        </Grid>
-
-        {/* Appointment Trends */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ padding: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Appointment Trends
-            </Typography>
-            <AppointmentsChart />
-          </Paper>
-        </Grid>
-
-        {/* Artist Performance */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ padding: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Artist Performance
-            </Typography>
-            <ArtistPerformanceChart />
-          </Paper>
-        </Grid>
+const AdminDashboard = () => (
+  <PageContainer title="Admin Dashboard">
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={6}>
+        <Section title="Notifications">
+          <NotificationsPanel />
+        </Section>
       </Grid>
-      {/* New Button for Archived Appointments */}
-      <Box sx={{ marginTop: 3, textAlign: 'center' }}>
-        <Button variant="contained" color="primary" onClick={() => navigate("/archived-appointments")}>
-          View Archived Appointments
-        </Button>
-      </Box>
-    </Box>
-  );
-};
+
+      <Grid item xs={12} md={6}>
+        <Section title="Key Metrics">
+          <KeyMetricsCard />
+        </Section>
+      </Grid>
+
+      <Grid item xs={12}>
+        <Section title="Appointment Overview">
+          <AppointmentOverview />
+        </Section>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Section title="Appointment Trends">
+          <AppointmentsChart />
+        </Section>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Section title="Artist Performance">
+          <ArtistPerformanceChart />
+        </Section>
+      </Grid>
+    </Grid>
+    {/* TODO(Phase 5): "Archived Appointments" — backend supports
+        GET /appointments/?archived=true; add route + view, then link here. */}
+  </PageContainer>
+);
 
 export default AdminDashboard;

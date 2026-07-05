@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   Box,
   Button,
-  Typography,
   FormControl,
   InputLabel,
   Select,
@@ -12,6 +11,7 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import axios from '../services/axios';
+import PageContainer from '../components/layout/PageContainer';
 import { AuthContext } from '../context/authContext';
 import AppointmentModal from '../components/adminDash/AppointmentModal';
 
@@ -153,10 +153,7 @@ const AppointmentsPage = () => {
   ];
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        Appointments
-      </Typography>
+    <PageContainer title="Appointments">
 
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Button
@@ -197,7 +194,7 @@ const AppointmentsPage = () => {
         </Button>
       </Box>
 
-      <div style={{ height: 500, width: '100%' }}>
+      <Box sx={{ height: 500, width: '100%' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -205,7 +202,7 @@ const AppointmentsPage = () => {
           rowsPerPageOptions={[7]}
           disableSelectionOnClick
         />
-      </div>
+      </Box>
 
       <AppointmentModal
         open={openModal}
@@ -228,7 +225,7 @@ const AppointmentsPage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 };
 

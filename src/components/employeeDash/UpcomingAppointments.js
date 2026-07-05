@@ -79,8 +79,7 @@ const UpcomingAppointments = () => {
           appointments.map((appt) => (
             <Grid item xs={12} key={appt.id}>
               <Paper
-                elevation={3}
-                sx={{ padding: 2, cursor: "pointer" }}
+                                sx={{ padding: 2, cursor: "pointer" }}
                 onClick={() => handleSelectAppointment(appt)}
               >
                 <Typography variant="h6">{appt.client.first_name} {appt.client.last_name}</Typography>

@@ -31,13 +31,8 @@ export const STATUS_LABELS = {
   [APPOINTMENT_STATUS.NO_SHOW]: 'No Show',
 };
 
-export const STATUS_COLORS = {
-  [APPOINTMENT_STATUS.PENDING]: '#E91E63', // Pink
-  [APPOINTMENT_STATUS.CONFIRMED]: '#9C27B0', // Purple
-  [APPOINTMENT_STATUS.COMPLETED]: '#BA68C8', // Light Purple
-  [APPOINTMENT_STATUS.CANCELED]: '#F48FB1', // Light Pink
-  [APPOINTMENT_STATUS.NO_SHOW]: '#CE93D8', // Medium Purple
-};
+// STATUS_COLORS removed: status styling now lives in src/theme.js as
+// `statusTokens` ({ main, bg, text } per status, WCAG AA verified).
 
 // ==================== NOTIFICATION ====================
 export const NOTIFICATION_STATUS = {
@@ -313,7 +308,6 @@ export default {
   ROLE_LABELS,
   APPOINTMENT_STATUS,
   STATUS_LABELS,
-  STATUS_COLORS,
   NOTIFICATION_STATUS,
   NOTIFICATION_ACTIONS,
   ACTION_LABELS,

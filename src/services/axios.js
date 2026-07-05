@@ -1,8 +1,9 @@
 import axios from "axios";
 
 // Create Axios instance with environment-based configuration
+// (Vite: env vars must be prefixed VITE_ and read via import.meta.env)
 const instance = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/",
+    baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/",
     withCredentials: true,  // Required for Django to send cookies
     timeout: 10000, // 10 second timeout
 });
@@ -30,7 +31,7 @@ instance.interceptors.request.use(
         }
 
         // Log requests in development
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
             console.log(`[${config.method.toUpperCase()}] ${config.url}`, {
                 data: config.data,
                 params: config.params,
@@ -49,7 +50,7 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
     (response) => {
         // Log successful responses in development
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
             console.log(`[${response.config.method.toUpperCase()}] ${response.config.url} - Success`, {
                 status: response.status,
                 data: response.data,

@@ -1,10 +1,10 @@
 import React, { useState, useContext } from "react";
-import { AuthContext } from "../context/authContext"; // ✅ Ensure correct import path
+import { AuthContext } from "../context/authContext";
 import { useNavigate } from "react-router-dom";
-import { Container, TextField, Button, Typography, Box, Alert } from "@mui/material";
+import { Container, TextField, Button, Typography, Box, Alert, Paper } from "@mui/material";
 
 const LoginPage = () => {
-  const { login } = useContext(AuthContext); // ✅ Get login function from context
+  const { login } = useContext(AuthContext);
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -12,58 +12,60 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await login(credentials); // ✅ Calls AuthContext login
+      const response = await login(credentials);
       if (response) {
         if (response.role === "employee") {
           navigate("/employee-dashboard");
         } else if (response.role === "admin") {
           navigate("/dashboard");
         } else {
-          navigate("/access-denied")
+          navigate("/access-denied");
         }
       }
-    } catch (error) {
+    } catch (err) {
       setError("Invalid username or password.");
     }
   };
 
   return (
     <Container maxWidth="sm">
-      <Box sx={{ mt: 5, p: 4, boxShadow: 3, borderRadius: 2, textAlign: "center" }}>
-        <Typography variant="h4" gutterBottom>
+      {/* Paper inherits the bordered-flat variant from the theme */}
+      <Paper sx={{ mt: 6, p: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
           Login
         </Typography>
 
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
           <TextField
             label="Username"
-            variant="outlined"
             fullWidth
             margin="normal"
+            autoComplete="username"
             onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
             required
           />
           <TextField
             label="Password"
             type="password"
-            variant="outlined"
             fullWidth
             margin="normal"
+            autoComplete="current-password"
             onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
             required
           />
 
-          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+          <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
             Login
           </Button>
         </Box>
 
-        <Typography variant="body2" sx={{ mt: 2 }}>
-          Don't have an account? <a href="/register">Register</a>
+        {/* Registration is admin-only: no self-service link. */}
+        <Typography variant="caption" component="p" sx={{ mt: 2, color: "text.secondary" }}>
+          Accounts are provisioned by your administrator.
         </Typography>
-      </Box>
+      </Paper>
     </Container>
   );
 };

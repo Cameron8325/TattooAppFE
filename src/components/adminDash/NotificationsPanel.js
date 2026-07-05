@@ -151,7 +151,7 @@ const renderDiffTable = (notification) => {
         {rows.map((row) => {
           const isChanged = row.previous !== row.current;
           return (
-            <TableRow key={row.label} sx={{ backgroundColor: isChanged ? "#ffebee" : "inherit" }}>
+            <TableRow key={row.label} sx={{ backgroundColor: isChanged ? "error.bg" : "inherit" }}>
               <TableCell>{row.label}</TableCell>
               <TableCell>{row.previous}</TableCell>
               <TableCell>{row.current}</TableCell>

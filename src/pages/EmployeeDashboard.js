@@ -1,39 +1,27 @@
 import React from 'react';
-import { Box, Typography, Paper, Grid } from '@mui/material';
+import { Grid, Typography } from '@mui/material';
+import PageContainer from '../components/layout/PageContainer';
+import Section from '../components/layout/Section';
 import UpcomingAppointments from '../components/employeeDash/UpcomingAppointments';
 
-const EmployeeDashboard = () => {
-    return (
-        <Box sx={{ padding: 3 }}>
-            <Typography variant="h4" gutterBottom>
-                Employee Dashboard
-            </Typography>
+const EmployeeDashboard = () => (
+  <PageContainer title="Employee Dashboard">
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={6}>
+        <Section title="Upcoming Appointments">
+          <UpcomingAppointments />
+        </Section>
+      </Grid>
 
-            <Grid container spacing={3}>
-                {/* Upcoming Appointments - Now using the new component */}
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ padding: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                            Upcoming Appointments
-                        </Typography>
-                        <UpcomingAppointments />
-                    </Paper>
-                </Grid>
-
-                {/* Task Reminders (Optional Section) */}
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ padding: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                            Task Reminders
-                        </Typography>
-                        <Typography>
-                            No reminders for now. Check back later!
-                        </Typography>
-                    </Paper>
-                </Grid>
-            </Grid>
-        </Box>
-    );
-};
+      <Grid item xs={12} md={6}>
+        <Section title="Task Reminders">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+            No reminders for now. Check back later!
+          </Typography>
+        </Section>
+      </Grid>
+    </Grid>
+  </PageContainer>
+);
 
 export default EmployeeDashboard;

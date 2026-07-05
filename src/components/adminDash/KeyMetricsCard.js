@@ -38,9 +38,8 @@ const KeyMetrics = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Typography variant="h5" gutterBottom>Key Metrics</Typography>
-
+    // Parent Paper owns padding + heading ("Key Metrics" duplicate removed).
+    <Box sx={{ flexGrow: 1 }}>
       <ButtonGroup variant="outlined" sx={{ mb: 2, mr: 2 }}>
         <Button
           onClick={() => {
@@ -71,15 +70,15 @@ const KeyMetrics = () => {
         onChange={handleMonthChange}
       />
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         {metrics.map(({ metric, value }) => (
           <Grid item xs={12} sm={4} key={metric}>
-            <Card>
+            <Card sx={{ height: "100%" }}>
               <CardContent>
-                <Typography variant="h6" color="textSecondary">
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   {metric.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                 </Typography>
-                <Typography variant="h4">
+                <Typography variant="h4" component="p">
                   {value ?? "—"}
                 </Typography>
               </CardContent>

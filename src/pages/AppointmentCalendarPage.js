@@ -5,7 +5,7 @@ import { AuthContext } from "../context/authContext";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import axios from "../services/axios";
 import AppointmentModal from "../components/adminDash/AppointmentModal";
-import { STATUS_COLORS } from "../constants";
+import { statusTokens } from "../theme";
 import {
   Box,
   Typography,
@@ -83,8 +83,16 @@ const AppointmentCalendarPage = () => {
   };
 
   const eventPropGetter = e => {
-    const bg = STATUS_COLORS[e.status] || STATUS_COLORS.completed;
-    return { style: { backgroundColor: bg, borderColor: bg } };
+    const token = statusTokens[e.status] || statusTokens.completed;
+    // Tinted background + dark text (AA), solid left border carries the hue.
+    return {
+      style: {
+        backgroundColor: token.bg,
+        color: token.text,
+        border: `1px solid ${token.main}`,
+        borderLeftWidth: 3,
+      },
+    };
   };
 
   return (

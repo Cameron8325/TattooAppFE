@@ -1,7 +1,8 @@
 // src/App.js
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useContext } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/navbar/Navbar";
+import ProtectedRoute from "./components/routing/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
@@ -11,23 +12,60 @@ import UserManagementPage from "./pages/UserManagementPage";
 import AccessDeniedPage from "./pages/AccessDeniedPage";
 import AppointmentCalendarPage from "./pages/AppointmentCalendarPage";
 import BillingReportsPage from "./pages/BillingReportsPage";
-import { AuthProvider } from "./context/authContext"; // ✅ AuthProvider stays here
+import { AuthContext, AuthProvider } from "./context/authContext";
+
+// "/" routes users to their workspace; guests to login.
+const HomeRedirect = () => {
+  const { user, loading } = useContext(AuthContext);
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  return (
+    <Navigate
+      to={user.role === "admin" ? "/dashboard" : "/employee-dashboard"}
+      replace
+    />
+  );
+};
 
 const App = () => {
   return (
-    <AuthProvider> {/* ✅ AuthProvider is now correctly inside the Router */}
+    <AuthProvider>
       <Navbar />
       <Routes>
+        {/* Public */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/appointments" element={<AppointmentsPage />} />
-        <Route path="/dashboard" element={<AdminDashboard />} />
-        <Route path="/user-management" element={<UserManagementPage />} />
-        <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
-        <Route path="/appointment-calendar" element={<AppointmentCalendarPage />} />
-        <Route path="/billing-reports" element={<BillingReportsPage />} />
         <Route path="/access-denied" element={<AccessDeniedPage />} />
-        <Route path="/" element={<h1>Welcome to the Tattoo Appointment App</h1>} />
+
+        {/* Any authenticated user */}
+        <Route path="/appointments" element={
+          <ProtectedRoute><AppointmentsPage /></ProtectedRoute>
+        } />
+        <Route path="/appointment-calendar" element={
+          <ProtectedRoute><AppointmentCalendarPage /></ProtectedRoute>
+        } />
+
+        {/* Admin only */}
+        <Route path="/register" element={
+          <ProtectedRoute roles={["admin"]}><RegisterPage /></ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute roles={["admin"]}><AdminDashboard /></ProtectedRoute>
+        } />
+        <Route path="/user-management" element={
+          <ProtectedRoute roles={["admin"]}><UserManagementPage /></ProtectedRoute>
+        } />
+        <Route path="/billing-reports" element={
+          <ProtectedRoute roles={["admin"]}><BillingReportsPage /></ProtectedRoute>
+        } />
+
+        {/* Employee only */}
+        <Route path="/employee-dashboard" element={
+          <ProtectedRoute roles={["employee"]}><EmployeeDashboard /></ProtectedRoute>
+        } />
+
+        {/* Home + catch-all */}
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="*" element={<HomeRedirect />} />
       </Routes>
     </AuthProvider>
   );

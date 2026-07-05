@@ -1,191 +1,163 @@
-import React, { useState, useEffect } from 'react';
+// Repaired against the real API (old version called nonexistent
+// /users/employees/ endpoints): list GET /users/, edit PATCH /users/<id>/,
+// delete DELETE /users/<id>/. Account creation goes through the admin-only
+// /register flow rather than a second, divergent form.
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-    Box,
-    Typography,
-    Paper,
-    Grid,
-    Button,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
+  Typography,
+  Paper,
+  Button,
+  Chip,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Alert,
 } from '@mui/material';
-import axios from '../services/axios';
+import { useNavigate } from 'react-router-dom';
+import axios, { getErrorMessage } from '../services/axios';
+import PageContainer from '../components/layout/PageContainer';
+import { ROLE_LABELS } from '../constants';
 
 const UserManagementPage = () => {
-    const [employees, setEmployees] = useState([]);
-    const [openDialog, setOpenDialog] = useState(false);
-    const [currentEmployee, setCurrentEmployee] = useState(null); // For edit
+  const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [editing, setEditing] = useState(null); // user being edited
+  const [error, setError] = useState('');
 
-    useEffect(() => {
-        axios.get('/users/')
-            .then((response) => setEmployees(response.data))
-            .catch(() => {
-                setEmployees([
-                    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Artist' },
-                    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Manager' },
-                ]);
-            });
-    }, []);
-    
+  const fetchUsers = useCallback(() => {
+    axios.get('/users/')
+      .then((res) => setUsers(res.data))
+      .catch((err) => setError(getErrorMessage(err)));
+  }, []);
 
-    const handleOpenDialog = (employee = null) => {
-        setCurrentEmployee(employee);
-        setOpenDialog(true);
-    };
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
-    const handleCloseDialog = () => {
-        setCurrentEmployee(null);
-        setOpenDialog(false);
-    };
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    axios.patch(`/users/${editing.id}/`, {
+      username: formData.get('username'),
+      email: formData.get('email'),
+    })
+      .then(() => {
+        setEditing(null);
+        fetchUsers();
+      })
+      .catch((err) => setError(getErrorMessage(err)));
+  };
 
-    const handleFormSubmit = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const employeeData = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            role: formData.get('role'),
-        };
+  const handleDelete = (user) => {
+    if (!window.confirm(`Delete account "${user.username}"? This cannot be undone.`)) return;
+    axios.delete(`/users/${user.id}/`)
+      .then(fetchUsers)
+      .catch((err) => setError(getErrorMessage(err)));
+  };
 
-        if (currentEmployee) {
-            // Update employee
-            axios.put(`/users/employees/${currentEmployee.id}/`, employeeData)
-                .then(() => {
-                    setEmployees((prev) =>
-                        prev.map((emp) =>
-                            emp.id === currentEmployee.id ? { ...emp, ...employeeData } : emp
-                        )
-                    );
-                    handleCloseDialog();
-                });
-        } else {
-            // Add new employee
-            axios.post('/users/employees/', employeeData)
-                .then((response) => {
-                    setEmployees((prev) => [...prev, response.data]);
-                    handleCloseDialog();
-                });
-        }
-    };
+  return (
+    <PageContainer title="User Management">
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
 
-    const handleDelete = (id) => {
-        axios.delete(`/users/employees/${id}/`).then(() => {
-            setEmployees((prev) => prev.filter((emp) => emp.id !== id));
-        });
-    };
+      <Stack direction="row" sx={{ mb: 2 }}>
+        <Button variant="contained" onClick={() => navigate('/register')}>
+          Add User
+        </Button>
+      </Stack>
 
-    return (
-        <Box sx={{ padding: 3 }}>
-            <Typography variant="h4" gutterBottom>
-                User Management
-            </Typography>
+      <TableContainer component={Paper}>
+        <Table size="small" aria-label="User accounts">
+          <TableHead>
+            <TableRow>
+              <TableCell>Username</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Role</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>{user.username}</TableCell>
+                <TableCell>{user.full_name || '—'}</TableCell>
+                <TableCell>{user.email || '—'}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={ROLE_LABELS[user.role] || user.role}
+                    sx={
+                      user.role === 'admin'
+                        ? { backgroundColor: 'primary.bg', color: 'primary.main' }
+                        : { backgroundColor: 'neutral.bg', color: 'neutral.text' }
+                    }
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Button size="small" onClick={() => setEditing(user)} sx={{ mr: 1 }}>
+                    Edit
+                  </Button>
+                  <Button size="small" color="error" onClick={() => handleDelete(user)}>
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {users.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', py: 2 }}>
+                    No users found.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-            <Grid container spacing={3}>
-                <Grid item xs={12}>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleOpenDialog()}
-                        sx={{ marginBottom: 2 }}
-                    >
-                        Add Employee
-                    </Button>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell>Email</TableCell>
-                                    <TableCell>Role</TableCell>
-                                    <TableCell>Actions</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {employees.map((employee) => (
-                                    <TableRow key={employee.id}>
-                                        <TableCell>{employee.id}</TableCell>
-                                        <TableCell>{employee.full_name}</TableCell>
-                                        <TableCell>{employee.email}</TableCell>
-                                        <TableCell>{employee.role}</TableCell>
-                                        <TableCell>
-                                            <Button
-                                                variant="contained"
-                                                color="primary"
-                                                onClick={() => handleOpenDialog(employee)}
-                                                sx={{ marginRight: 1 }}
-                                            >
-                                                Edit
-                                            </Button>
-                                            <Button
-                                                variant="contained"
-                                                color="secondary"
-                                                onClick={() => handleDelete(employee.id)}
-                                            >
-                                                Delete
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Grid>
-            </Grid>
-
-            {/* Dialog for Add/Edit */}
-            <Dialog open={openDialog} onClose={handleCloseDialog}>
-                <DialogTitle>
-                    {currentEmployee ? 'Edit Employee' : 'Add Employee'}
-                </DialogTitle>
-                <form onSubmit={handleFormSubmit}>
-                    <DialogContent>
-                        <TextField
-                            name="name"
-                            label="Name"
-                            fullWidth
-                            defaultValue={currentEmployee?.name || ''}
-                            margin="normal"
-                            required
-                        />
-                        <TextField
-                            name="email"
-                            label="Email"
-                            type="email"
-                            fullWidth
-                            defaultValue={currentEmployee?.email || ''}
-                            margin="normal"
-                            required
-                        />
-                        <TextField
-                            name="role"
-                            label="Role"
-                            fullWidth
-                            defaultValue={currentEmployee?.role || ''}
-                            margin="normal"
-                            required
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseDialog} color="secondary">
-                            Cancel
-                        </Button>
-                        <Button type="submit" variant="contained" color="primary">
-                            {currentEmployee ? 'Update' : 'Add'}
-                        </Button>
-                    </DialogActions>
-                </form>
-            </Dialog>
-        </Box>
-    );
+      <Dialog open={Boolean(editing)} onClose={() => setEditing(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Edit User</DialogTitle>
+        <form onSubmit={handleEditSubmit}>
+          <DialogContent>
+            <TextField
+              name="username"
+              label="Username"
+              fullWidth
+              defaultValue={editing?.username || ''}
+              margin="normal"
+              required
+            />
+            <TextField
+              name="email"
+              label="Email"
+              type="email"
+              fullWidth
+              defaultValue={editing?.email || ''}
+              margin="normal"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditing(null)}>Cancel</Button>
+            <Button type="submit" variant="contained">Save</Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </PageContainer>
+  );
 };
 
 export default UserManagementPage;

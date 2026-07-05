@@ -7,8 +7,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import axios from '../../services/axios'
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+import { chartPalette } from '../../theme';
 
 const ArtistPerformanceChart = () => {
     const [data, setData] = useState([]);
@@ -37,11 +36,11 @@ const ArtistPerformanceChart = () => {
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    fill="#8884d8"
+                    fill={chartPalette[0]}
                     label
                 >
                     {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={chartPalette[index % chartPalette.length]} />
                     ))}
                 </Pie>
                 <Tooltip />
