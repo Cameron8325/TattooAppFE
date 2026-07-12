@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box, Card, CardContent, Typography, Grid,
+  Box, Grid,
   Button, ButtonGroup, TextField
 } from "@mui/material";
+import StatCard from "../layout/StatCard";
 import axios from "../../services/axios.js";
 
 const KeyMetrics = () => {
@@ -40,7 +41,7 @@ const KeyMetrics = () => {
   return (
     // Parent Paper owns padding + heading ("Key Metrics" duplicate removed).
     <Box sx={{ flexGrow: 1 }}>
-      <ButtonGroup variant="outlined" sx={{ mb: 2, mr: 2 }}>
+      <ButtonGroup variant="outlined" sx={{ mb: 3, mr: 2 }}>
         <Button
           onClick={() => {
             setRange("last_7_days");
@@ -65,24 +66,18 @@ const KeyMetrics = () => {
         type="month"
         label="Select Month"
         InputLabelProps={{ shrink: true }}
-        sx={{ mb: 2 }}
+        sx={{ mb: 3 }}
         value={month}
         onChange={handleMonthChange}
       />
 
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         {metrics.map(({ metric, value }) => (
-          <Grid item xs={12} sm={4} key={metric}>
-            <Card sx={{ height: "100%" }}>
-              <CardContent>
-                <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                  {metric.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                </Typography>
-                <Typography variant="h4" component="p">
-                  {value ?? "—"}
-                </Typography>
-              </CardContent>
-            </Card>
+          <Grid item xs={12} sm={6} md={4} key={metric}>
+            <StatCard
+              label={metric.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+              value={value ?? "—"}
+            />
           </Grid>
         ))}
       </Grid>

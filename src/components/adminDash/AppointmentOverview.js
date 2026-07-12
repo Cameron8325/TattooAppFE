@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Box, Card, CardContent, Typography, Grid, Button, Stack } from "@mui/material";
+import { Box, Grid, Button, Stack } from "@mui/material";
+import StatCard from "../layout/StatCard";
 
 const STAT_LABELS = [
   { key: "total", label: "Total Appointments" },
@@ -26,7 +27,7 @@ const AppointmentOverview = () => {
   return (
     // Parent Paper owns padding + heading; this component renders content only.
     <Box sx={{ flexGrow: 1 }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         {["all", "today", "this_week"].map((value) => (
           <Button
             key={value}
@@ -37,17 +38,10 @@ const AppointmentOverview = () => {
           </Button>
         ))}
       </Stack>
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         {STAT_LABELS.map(({ key, label }) => (
-          <Grid item xs={12} sm={3} key={key}>
-            <Card sx={{ height: "100%" }}>
-              <CardContent>
-                <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                  {label}
-                </Typography>
-                <Typography variant="h4" component="p">{data[key]}</Typography>
-              </CardContent>
-            </Card>
+          <Grid item xs={12} sm={6} md={3} key={key}>
+            <StatCard label={label} value={data[key]} />
           </Grid>
         ))}
       </Grid>

@@ -5,10 +5,8 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Button,
   Dialog,
   DialogTitle,
@@ -215,18 +213,19 @@ const NotificationsPanel = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return "warning";
-      case "approved":
-        return "success";
-      case "denied":
-        return "error";
-      default:
-        return "default";
-    }
+  // Tinted chip styling per status (AA pairs from the theme palette).
+  const statusChipSx = {
+    pending: { backgroundColor: "warning.bg", color: "warning.text" },
+    approved: { backgroundColor: "success.bg", color: "success.text" },
+    denied: { backgroundColor: "error.bg", color: "error.text" },
   };
+
+  const actionLabel = (action) =>
+    action === "created"
+      ? "Created appointment"
+      : action === "no_show"
+        ? "Marked no-show"
+        : "Updated appointment";
 
   if (loading) {
     return (
@@ -237,54 +236,62 @@ const NotificationsPanel = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>
-        Notifications
-      </Typography>
+    <Box>
       {notifications.length === 0 ? (
-        <Typography>No notifications available.</Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          No recent activity.
+        </Typography>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Employee</TableCell>
-                <TableCell>Action</TableCell>
-                <TableCell>Timestamp</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Manage</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {notifications.map((notification) => (
-                <TableRow key={notification.id}>
-                  <TableCell>{getEmployeeName(notification.employee)}</TableCell>
-                  <TableCell>
-                    {notification.action === "created"
-                      ? "Created Appointment"
-                      : notification.action === "no_show"
-                        ? "No Show"
-                        : "Updated Appointment"}
-                  </TableCell>
-                  <TableCell>{new Date(notification.timestamp).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Chip label={notification.status.toUpperCase()} color={getStatusColor(notification.status)} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      onClick={() => setSelectedNotification(notification)}
-                    >
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
+          {notifications.map((notification) => (
+            <Box
+              component="li"
+              key={notification.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`View details: ${actionLabel(notification.action)} by ${getEmployeeName(notification.employee)}`}
+              onClick={() => setSelectedNotification(notification)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedNotification(notification);
+                }
+              }}
+              sx={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 2,
+                py: 2,
+                px: 1.5,
+                mx: -1.5,
+                borderRadius: 1,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                cursor: "pointer",
+                transition: "background-color 0.2s ease-in-out",
+                "&:hover, &:focus-visible": { backgroundColor: "primary.bg" },
+                "&:last-of-type": { borderBottom: "none" },
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {actionLabel(notification.action)}
+                </Typography>
+                <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 0.25 }}>
+                  {getEmployeeName(notification.employee)}
+                  {" · "}
+                  {new Date(notification.timestamp).toLocaleString()}
+                </Typography>
+              </Box>
+              <Chip
+                size="small"
+                label={notification.status}
+                sx={{ textTransform: "capitalize", flexShrink: 0, ...statusChipSx[notification.status] }}
+              />
+            </Box>
+          ))}
+        </Box>
       )}
       {selectedNotification && (
         <Dialog open onClose={() => setSelectedNotification(null)} maxWidth="md" fullWidth>

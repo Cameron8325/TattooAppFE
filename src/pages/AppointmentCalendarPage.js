@@ -141,7 +141,7 @@ const AppointmentCalendarPage = () => {
 {user && (
   <AppointmentModal
     open={openModal}
-    handleClose={handleClose}
+    onClose={handleClose}
     initialData={selectedEvent}
     onSave={handleSave}
     user={user}

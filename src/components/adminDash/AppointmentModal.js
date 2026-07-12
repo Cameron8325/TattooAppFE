@@ -2,8 +2,10 @@
 import React, { useEffect, useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, TextField, Grid, FormControl, InputLabel, Select, MenuItem
+  Button, TextField, Grid, FormControl, InputLabel, Select, MenuItem,
+  IconButton
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "../../services/axios";
 import { getTodayDate } from "../../utils/dateTime";
@@ -177,8 +179,15 @@ const AppointmentModal = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
+      <DialogTitle sx={{ pr: 6 }}>
         {isEdit ? "Edit Appointment" : "Create Appointment"}
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+        >
+          <CloseIcon />
+        </IconButton>
       </DialogTitle>
       <DialogContent>
         <Grid container spacing={2}>
