@@ -1,118 +1,106 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Box, Typography, Button, Paper, Grid, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel } from "@mui/material";
-import axios from "../../services/axios";
-import { getCSRFToken } from "../../services/authService";
-import { formatDate } from "../../utils/dateTime";
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Snackbar,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material';
+import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
+import axios from '../../services/axios';
+import { formatDate, formatTime } from '../../utils/dateTime';
+import { STATUS_LABELS } from '../../constants';
+import { statusTokens } from '../../theme';
 
 const UpcomingAppointments = () => {
   const [appointments, setAppointments] = useState([]);
-  const [filter, setFilter] = useState("today");
-  const [openModal, setOpenModal] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [filter, setFilter] = useState('upcoming');
+  const [selected, setSelected] = useState(null);
+  const [message, setMessage] = useState('');
 
-  // ✅ Move fetchAppointments outside of useEffect and use useCallback
   const fetchAppointments = useCallback(async () => {
     try {
-      const endpoint = filter === "today" ? "/appointments/?filter=today" : "/appointments/?filter=this_week";
-      const { data } = await axios.get(endpoint);
+      const { data } = await axios.get(filter === 'upcoming' ? '/appointments/' : `/appointments/?filter=${filter}`);
       setAppointments(data);
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
+    } catch {
+      setMessage('Appointments could not be loaded.');
     }
-  }, [filter]); // ✅ Declare filter as a dependency
+  }, [filter]);
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [fetchAppointments]); // ✅ Now fetchAppointments is a valid dependency
+  useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
-  // Open Modal for Viewing Appointment Details
-  const handleSelectAppointment = (appt) => {
-    setSelectedAppointment(appt);
-    setOpenModal(true);
-  };
-
-  // Close Modal
-  const handleCloseModal = () => {
-    setOpenModal(false);
-    setSelectedAppointment(null);
-  };
-
-  // Handle Status Update for Completed or No Show
-  const handleUpdateStatus = async (status) => {
-    if (!selectedAppointment) return;
+  const updateStatus = async (status) => {
     try {
-      await axios.patch(
-        `/appointments/${selectedAppointment.id}/reschedule/`,
-        { status },
-        { headers: { "X-CSRFToken": await getCSRFToken() } }
-      );
-
-      alert(`Appointment marked as ${status.replace("_", " ")}`);
-      fetchAppointments(); // ✅ Refresh data
-      handleCloseModal();
-    } catch (error) {
-      console.error(`Error updating appointment to ${status}:`, error);
-      alert("Error updating appointment status.");
+      await axios.patch(`/appointments/${selected.id}/reschedule/`, { status });
+      setSelected(null);
+      setMessage(`Appointment marked ${status.replace('_', ' ')}.`);
+      fetchAppointments();
+    } catch {
+      setMessage('The appointment status could not be updated.');
     }
   };
 
   return (
-    <Box p={2}>
-      <Typography variant="h5" gutterBottom>
-        Upcoming Appointments
-      </Typography>
-
-      {/* Filter Dropdown */}
-      <FormControl sx={{ minWidth: 150, mb: 2 }}>
-        <InputLabel>Filter</InputLabel>
-        <Select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <MenuItem value="today">Today</MenuItem>
-          <MenuItem value="this_week">This Week</MenuItem>
-        </Select>
-      </FormControl>
-
-      {/* Appointments List */}
-      <Grid container spacing={2}>
-        {appointments.length === 0 ? (
-          <Typography variant="body1">No upcoming appointments.</Typography>
-        ) : (
-          appointments.map((appt) => (
-            <Grid item xs={12} key={appt.id}>
-              <Paper
-                                sx={{ padding: 2, cursor: "pointer" }}
-                onClick={() => handleSelectAppointment(appt)}
-              >
-                <Typography variant="h6">{appt.client.first_name} {appt.client.last_name}</Typography>
-                <Typography variant="body2">Service: {appt.service}</Typography>
-                <Typography variant="body2">Date: {formatDate(appt.date)}</Typography>
-                <Typography variant="body2">Time: {appt.time}</Typography>
-                <Typography variant="body2">Status: {appt.status}</Typography>
-              </Paper>
-            </Grid>
-          ))
+    <Box>
+      <ToggleButtonGroup exclusive size="small" value={filter} onChange={(_, value) => value && setFilter(value)} aria-label="Appointment period" sx={{ mb: 1 }}>
+        <ToggleButton value="today">Today</ToggleButton>
+        <ToggleButton value="upcoming">Upcoming</ToggleButton>
+      </ToggleButtonGroup>
+      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+        {appointments.map((appointment, index) => {
+          const token = statusTokens[appointment.status] || statusTokens.confirmed;
+          return (
+            <React.Fragment key={appointment.id}>
+              {index > 0 && <Divider />}
+              <Box component="li" onClick={() => setSelected(appointment)} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '80px 1fr auto' }, gap: 2, alignItems: 'center', py: 2, cursor: 'pointer', '&:hover .client-name': { color: 'primary.main' } }}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 800 }}>{formatTime(appointment.time)}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{formatDate(appointment.date)}</Typography>
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography className="client-name" variant="body2" sx={{ fontWeight: 700 }}>{appointment.client?.first_name} {appointment.client?.last_name}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{appointment.service_display || appointment.service} · {formatTime(appointment.time)}-{formatTime(appointment.end_time)}</Typography>
+                </Box>
+                <Chip size="small" label={STATUS_LABELS[appointment.status] || appointment.status} sx={{ bgcolor: token.bg, color: token.text, justifySelf: 'start' }} />
+              </Box>
+            </React.Fragment>
+          );
+        })}
+        {!appointments.length && (
+          <Stack alignItems="center" spacing={1} sx={{ py: 7, color: 'text.secondary' }}><AccessTimeOutlinedIcon /><Typography variant="body2">No appointments in this period.</Typography></Stack>
         )}
-      </Grid>
+      </Box>
 
-      {/* Appointment Modal */}
-      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-        <DialogTitle>Appointment Details</DialogTitle>
-        <DialogContent>
-          {selectedAppointment && (
-            <>
-              <TextField label="Client" fullWidth value={`${selectedAppointment.client.first_name} ${selectedAppointment.client.last_name}`} disabled />
-              <TextField label="Service" fullWidth value={selectedAppointment.service} disabled sx={{ mt: 2 }} />
-              <TextField label="Date" fullWidth value={selectedAppointment.date} disabled sx={{ mt: 2 }} />
-              <TextField label="Time" fullWidth value={selectedAppointment.time} disabled sx={{ mt: 2 }} />
-              <TextField label="Notes" fullWidth multiline rows={3} value={selectedAppointment.notes || "No notes"} disabled sx={{ mt: 2 }} />
-            </>
+      <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Appointment details</DialogTitle>
+        <DialogContent dividers>
+          {selected && (
+            <Stack spacing={2}>
+              <Box><Typography variant="overline" sx={{ color: 'text.secondary' }}>Client</Typography><Typography variant="h6">{selected.client?.first_name} {selected.client?.last_name}</Typography></Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <Box><Typography variant="overline" sx={{ color: 'text.secondary' }}>Service</Typography><Typography variant="body1">{selected.service_display || selected.service}</Typography></Box>
+                <Box><Typography variant="overline" sx={{ color: 'text.secondary' }}>Schedule</Typography><Typography variant="body1">{formatDate(selected.date)}, {formatTime(selected.time)}</Typography></Box>
+              </Box>
+              <Box><Typography variant="overline" sx={{ color: 'text.secondary' }}>Notes</Typography><Typography variant="body1">{selected.notes || 'No notes added.'}</Typography></Box>
+            </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseModal} color="secondary">Cancel</Button>
-          <Button onClick={() => handleUpdateStatus("completed")} color="success">Completed</Button>
-          <Button onClick={() => handleUpdateStatus("no_show")} color="error">No Show</Button>
+          <Button onClick={() => setSelected(null)}>Close</Button>
+          <Button color="error" onClick={() => updateStatus('no_show')}>Mark no-show</Button>
+          <Button color="success" variant="contained" onClick={() => updateStatus('completed')}>Mark completed</Button>
         </DialogActions>
       </Dialog>
+      <Snackbar open={Boolean(message)} autoHideDuration={3500} onClose={() => setMessage('')}><Alert onClose={() => setMessage('')} severity="info">{message}</Alert></Snackbar>
     </Box>
   );
 };

@@ -26,7 +26,7 @@ import { SERVICE_LABELS } from "../../constants";
 const deduplicateNotifications = (notifications) => {
   const grouped = {};
   notifications.forEach((notif) => {
-    const key = notif.appointment && notif.appointment.id ? notif.appointment.id : notif.id;
+    const key = notif.appointment_id || notif.id;
     if (!grouped[key]) {
       grouped[key] = notif;
     } else {
@@ -37,7 +37,7 @@ const deduplicateNotifications = (notifications) => {
       }
     }
   });
-  return Object.values(grouped);
+  return Object.values(grouped).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 };
 
 // Helper to render an employee's name (prefer full_name, then username)
@@ -242,7 +242,7 @@ const NotificationsPanel = () => {
           No recent activity.
         </Typography>
       ) : (
-        <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
+        <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0, maxHeight: 580, overflowY: "auto" }}>
           {notifications.map((notification) => (
             <Box
               component="li"
@@ -279,7 +279,7 @@ const NotificationsPanel = () => {
                   {actionLabel(notification.action)}
                 </Typography>
                 <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 0.25 }}>
-                  {getEmployeeName(notification.employee)}
+                  {notification.employee_name || getEmployeeName(notification.employee)}
                   {" · "}
                   {new Date(notification.timestamp).toLocaleString()}
                 </Typography>

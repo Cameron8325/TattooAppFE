@@ -3,7 +3,7 @@ import axios from "axios";
 // Create Axios instance with environment-based configuration
 // (Vite: env vars must be prefixed VITE_ and read via import.meta.env)
 const instance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/",
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/",
     withCredentials: true,  // Required for Django to send cookies
     timeout: 10000, // 10 second timeout
 });
@@ -82,7 +82,9 @@ instance.interceptors.response.use(
                 case 403:
                     // Forbidden - user doesn't have permission
                     console.error("Access forbidden");
-                    if (window.location.pathname !== '/access-denied') {
+                    // DRF returns 403 for an unauthenticated session on /user/.
+                    // AuthContext handles that as a guest state; it is not a role error.
+                    if (!error.config?.url?.includes('user/') && window.location.pathname !== '/access-denied') {
                         window.location.href = '/access-denied';
                     }
                     break;

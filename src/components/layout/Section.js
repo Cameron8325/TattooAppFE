@@ -1,48 +1,28 @@
-// Shared card shell — bordered flat Paper with generous internal padding,
-// an optional subtitle + action slot in the header, and a subtle
-// hover treatment (border-color shift + soft shadow) to signal
-// interactivity. Children render content only.
-import { Box, Paper, Typography } from "@mui/material";
+import { Box, Paper, Typography } from '@mui/material';
 
-const Section = ({ title, subtitle, action, children, sx = {} }) => (
-  <Paper
-    sx={{
-      p: { xs: 3, md: 4 },
-      height: "100%",
-      transition: "border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-      "&:hover": {
-        borderColor: "neutral.main",
-        boxShadow: 1,
-      },
-      ...sx,
-    }}
-  >
+const Section = ({ title, subtitle, action, children, sx = {}, contentSx = {} }) => (
+  <Paper sx={{ border: 1, borderColor: 'divider', height: '100%', overflow: 'hidden', ...sx }}>
     {(title || action) && (
       <Box
         sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
+          px: { xs: 2, md: 2.5 },
+          py: 2,
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 2,
-          mb: 3,
         }}
       >
-        <Box>
-          {title && (
-            <Typography variant="h6" component="h2">
-              {title}
-            </Typography>
-          )}
-          {subtitle && (
-            <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 0.5 }}>
-              {subtitle}
-            </Typography>
-          )}
+        <Box sx={{ minWidth: 0 }}>
+          {title && <Typography variant="h6" component="h2">{title}</Typography>}
+          {subtitle && <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.25 }}>{subtitle}</Typography>}
         </Box>
         {action}
       </Box>
     )}
-    {children}
+    <Box sx={{ p: { xs: 2, md: 2.5 }, ...contentSx }}>{children}</Box>
   </Paper>
 );
 

@@ -1,34 +1,28 @@
-// Shared page shell — "gallery" spacing pass:
-// generous vertical rhythm, title block with optional subtitle and an
-// actions slot (right-aligned buttons/filters). Body background (ink[50])
-// comes from CssBaseline via theme.palette.background.default.
-import { Box, Container, Typography } from "@mui/material";
+import { Box, Container, Typography } from '@mui/material';
 
-const PageContainer = ({ title, subtitle, actions, maxWidth = "lg", children }) => (
-  <Container maxWidth={maxWidth} sx={{ py: { xs: 4, md: 6 } }}>
+const PageContainer = ({ eyebrow, title, subtitle, actions, maxWidth = 'xl', children }) => (
+  <Container maxWidth={maxWidth} sx={{ px: { xs: 2, sm: 3, lg: 4 }, py: { xs: 3, lg: 4 } }}>
     {(title || actions) && (
       <Box
         sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'flex-end' },
+          justifyContent: 'space-between',
           gap: 2,
-          mb: { xs: 3, md: 5 },
+          mb: 3,
         }}
       >
-        <Box>
-          {title && (
-            <Typography variant="h4" component="h1">
-              {title}
-            </Typography>
-          )}
+        <Box sx={{ minWidth: 0 }}>
+          {eyebrow && <Typography variant="overline" sx={{ color: 'primary.main' }}>{eyebrow}</Typography>}
+          {title && <Typography variant="h4" component="h1">{title}</Typography>}
           {subtitle && (
-            <Typography variant="body1" sx={{ color: "text.secondary", mt: 0.5 }}>
+            <Typography variant="body1" sx={{ color: 'text.secondary', mt: 0.5, maxWidth: 680 }}>
               {subtitle}
             </Typography>
           )}
         </Box>
-        {actions}
+        {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
       </Box>
     )}
     {children}

@@ -1,50 +1,40 @@
-import React, { useState, useEffect } from "react";
-import { Box, Grid, Button, Stack } from "@mui/material";
-import StatCard from "../layout/StatCard";
+import React, { useEffect, useState } from 'react';
+import { Box, Skeleton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import axios from '../../services/axios';
 
 const STAT_LABELS = [
-  { key: "total", label: "Total Appointments" },
-  { key: "completed", label: "Completed" },
-  { key: "pending", label: "Pending" },
-  { key: "canceled", label: "Canceled" },
+  { key: 'total', label: 'Total' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'canceled', label: 'Canceled' },
+  { key: 'no_show', label: 'No-show' },
 ];
 
 const AppointmentOverview = () => {
-  const [data, setData] = useState({ total: 0, completed: 0, pending: 0, canceled: 0 });
-  const [filter, setFilter] = useState("all");
+  const [data, setData] = useState(null);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    // TODO(Phase 5): replace mock with GET /appointments/overview/?filter=...
-    const fetchMockData = async () => {
-      setTimeout(() => {
-        setData({ total: 45, completed: 30, pending: 10, canceled: 5 });
-      }, 1000);
-    };
-
-    fetchMockData();
+    const params = filter === 'all' ? '' : `?filter=${filter}`;
+    setData(null);
+    axios.get(`/appointments/overview/${params}`).then(({ data: response }) => setData(response)).catch(() => setData({}));
   }, [filter]);
 
   return (
-    // Parent Paper owns padding + heading; this component renders content only.
-    <Box sx={{ flexGrow: 1 }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        {["all", "today", "this_week"].map((value) => (
-          <Button
-            key={value}
-            variant={filter === value ? "contained" : "outlined"}
-            onClick={() => setFilter(value)}
-          >
-            {value === "all" ? "All" : value === "today" ? "Today" : "This Week"}
-          </Button>
+    <Box>
+      <ToggleButtonGroup exclusive size="small" value={filter} onChange={(_, value) => value && setFilter(value)} aria-label="Appointment period" sx={{ mb: 2.5 }}>
+        <ToggleButton value="all">All time</ToggleButton>
+        <ToggleButton value="today">Today</ToggleButton>
+        <ToggleButton value="this_week">This week</ToggleButton>
+      </ToggleButtonGroup>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(5, 1fr)' }, border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+        {STAT_LABELS.map(({ key, label }, index) => (
+          <Box key={key} sx={{ p: 2, borderRight: index < STAT_LABELS.length - 1 ? 1 : 0, borderBottom: { xs: index < 3 ? 1 : 0, sm: 0 }, borderColor: 'divider', bgcolor: key === 'pending' ? 'warning.bg' : 'background.paper' }}>
+            <Typography variant="overline" sx={{ color: 'text.secondary' }}>{label}</Typography>
+            {data ? <Typography variant="h5" sx={{ mt: 0.5 }}>{data[key] ?? 0}</Typography> : <Skeleton width={42} height={30} />}
+          </Box>
         ))}
-      </Stack>
-      <Grid container spacing={3}>
-        {STAT_LABELS.map(({ key, label }) => (
-          <Grid item xs={12} sm={6} md={3} key={key}>
-            <StatCard label={label} value={data[key]} />
-          </Grid>
-        ))}
-      </Grid>
+      </Box>
     </Box>
   );
 };

@@ -144,6 +144,8 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   EMPLOYEE_DASHBOARD: '/employee-dashboard',
   USER_MANAGEMENT: '/user-management',
+  CLIENTS: '/clients',
+  SERVICES: '/services',
   BILLING_REPORTS: '/billing-reports',
   ACCESS_DENIED: '/access-denied',
 };
@@ -301,33 +303,3 @@ export const MONTHS = [
   { value: 11, label: 'November' },
   { value: 12, label: 'December' },
 ];
-
-// ==================== EXPORT DEFAULT ====================
-export default {
-  USER_ROLES,
-  ROLE_LABELS,
-  APPOINTMENT_STATUS,
-  STATUS_LABELS,
-  NOTIFICATION_STATUS,
-  NOTIFICATION_ACTIONS,
-  ACTION_LABELS,
-  SERVICES,
-  SERVICE_LABELS,
-  SERVICE_DESCRIPTIONS,
-  SERVICE_PRICES,
-  TIME_FILTERS,
-  TIME_FILTER_LABELS,
-  DATE_RANGES,
-  DATE_RANGE_LABELS,
-  FEE_TYPES,
-  FEE_TYPE_LABELS,
-  CALENDAR_VIEWS,
-  ROUTES,
-  API_ENDPOINTS,
-  VALIDATION,
-  UI_CONFIG,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-  CONFIRMATION_MESSAGES,
-  MONTHS,
-};

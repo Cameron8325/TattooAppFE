@@ -1,86 +1,43 @@
-import React, { useEffect, useState } from "react";
-import {
-  Box, Grid,
-  Button, ButtonGroup, TextField
-} from "@mui/material";
-import StatCard from "../layout/StatCard";
-import axios from "../../services/axios.js";
+import React, { useEffect, useMemo, useState } from 'react';
+import { Box, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import AttachMoneyOutlinedIcon from '@mui/icons-material/AttachMoneyOutlined';
+import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
+import StatCard from '../layout/StatCard';
+import axios from '../../services/axios';
+
+const metricMeta = {
+  total_revenue: { label: 'Revenue', icon: <AttachMoneyOutlinedIcon />, tone: 'primary', format: (value) => `$${Number(value || 0).toLocaleString()}` },
+  total_appointments: { label: 'Completed sessions', icon: <EventAvailableOutlinedIcon />, tone: 'secondary', format: (value) => Number(value || 0).toLocaleString() },
+  clients_served: { label: 'Clients served', icon: <PeopleAltOutlinedIcon />, tone: 'info', format: (value) => Number(value || 0).toLocaleString() },
+};
 
 const KeyMetrics = () => {
-  const [metrics, setMetrics] = useState([]);
-  const [range, setRange] = useState("last_30_days");
-  const [month, setMonth] = useState("");
+  const [metrics, setMetrics] = useState({});
+  const [range, setRange] = useState('last_30_days');
+  const [month, setMonth] = useState('');
 
   useEffect(() => {
-    let url = "metrics/";
-    if (range) {
-      url += `?range=${range}`;
-    } else if (month) {
-      url += `?month=${month}`;
-    }
+    const params = month ? `month=${month}` : `range=${range}`;
+    axios.get(`/metrics/?${params}`).then(({ data }) => setMetrics(data)).catch(() => setMetrics({}));
+  }, [month, range]);
 
-    axios.get(url)
-      .then((response) => {
-        const data = response.data;
-        const formatted = Object.entries(data).map(([metric, value]) => ({
-          metric,
-          value,
-        }));
-        setMetrics(formatted);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch metrics:", err);
-      });
-  }, [range, month]);
-
-  const handleMonthChange = (e) => {
-    setRange(""); // Clear range when using month
-    setMonth(e.target.value);
-  };
+  const periodLabel = useMemo(() => month ? 'Selected month' : range === 'last_7_days' ? 'Last 7 days' : 'Last 30 days', [month, range]);
 
   return (
-    // Parent Paper owns padding + heading ("Key Metrics" duplicate removed).
-    <Box sx={{ flexGrow: 1 }}>
-      <ButtonGroup variant="outlined" sx={{ mb: 3, mr: 2 }}>
-        <Button
-          onClick={() => {
-            setRange("last_7_days");
-            setMonth("");
-          }}
-          variant={range === "last_7_days" ? "contained" : "outlined"}
-        >
-          Last 7 Days
-        </Button>
-        <Button
-          onClick={() => {
-            setRange("last_30_days");
-            setMonth("");
-          }}
-          variant={range === "last_30_days" ? "contained" : "outlined"}
-        >
-          Last 30 Days
-        </Button>
-      </ButtonGroup>
-
-      <TextField
-        type="month"
-        label="Select Month"
-        InputLabelProps={{ shrink: true }}
-        sx={{ mb: 3 }}
-        value={month}
-        onChange={handleMonthChange}
-      />
-
-      <Grid container spacing={3}>
-        {metrics.map(({ metric, value }) => (
-          <Grid item xs={12} sm={6} md={4} key={metric}>
-            <StatCard
-              label={metric.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-              value={value ?? "—"}
-            />
-          </Grid>
+    <Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, mb: 2 }}>
+        <ToggleButtonGroup exclusive size="small" value={month ? null : range} onChange={(_, value) => { if (value) { setRange(value); setMonth(''); } }} aria-label="Metric range">
+          <ToggleButton value="last_7_days">7 days</ToggleButton>
+          <ToggleButton value="last_30_days">30 days</ToggleButton>
+        </ToggleButtonGroup>
+        <TextField type="month" label="Month" InputLabelProps={{ shrink: true }} value={month} onChange={(event) => setMonth(event.target.value)} sx={{ width: 170 }} />
+      </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2 }}>
+        {Object.entries(metricMeta).map(([key, meta]) => (
+          <StatCard key={key} label={meta.label} value={meta.format(metrics[key])} helper={periodLabel} icon={meta.icon} tone={meta.tone} />
         ))}
-      </Grid>
+      </Box>
     </Box>
   );
 };

@@ -1,28 +1,20 @@
-// Stat module: overline label in secondary ink over a high-contrast value.
-// Used by AppointmentOverview and KeyMetricsCard for consistent density.
-import { Card, CardContent, Typography } from "@mui/material";
+import { Box, Paper, Typography } from '@mui/material';
 
-const StatCard = ({ label, value }) => (
-  <Card
-    sx={{
-      height: "100%",
-      transition: "border-color 0.2s ease-in-out",
-      "&:hover": { borderColor: "neutral.main" },
-    }}
-  >
-    <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
-      <Typography
-        variant="overline"
-        component="p"
-        sx={{ color: "text.secondary", letterSpacing: "0.08em", lineHeight: 1.6, mb: 0.5 }}
-      >
-        {label}
-      </Typography>
-      <Typography variant="h4" component="p">
-        {value}
-      </Typography>
-    </CardContent>
-  </Card>
+const StatCard = ({ label, value, helper, icon, tone = 'secondary' }) => (
+  <Paper sx={{ border: 1, borderColor: 'divider', p: 2.25, height: '100%' }}>
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+      <Box>
+        <Typography variant="overline" component="p" sx={{ color: 'text.secondary' }}>{label}</Typography>
+        <Typography variant="h4" component="p" sx={{ mt: 0.5 }}>{value}</Typography>
+        {helper && <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>{helper}</Typography>}
+      </Box>
+      {icon && (
+        <Box sx={{ width: 38, height: 38, display: 'grid', placeItems: 'center', borderRadius: 1, bgcolor: `${tone}.bg`, color: `${tone}.main` }}>
+          {icon}
+        </Box>
+      )}
+    </Box>
+  </Paper>
 );
 
 export default StatCard;

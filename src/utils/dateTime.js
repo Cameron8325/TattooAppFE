@@ -1,5 +1,3 @@
-import moment from 'moment';
-
 /**
  * Format a date string to MM/DD/YYYY format
  * @param {string} dateString - ISO date string
@@ -327,26 +325,4 @@ export const formatDateWithRelative = (dateString) => {
   }
   
   return formatted;
-};
-
-// Export all functions as default object
-export default {
-  formatDate,
-  formatTime,
-  formatDateTime,
-  isToday,
-  isThisWeek,
-  isPast,
-  isFuture,
-  sortByDateTime,
-  getTimeSlots,
-  convertTo24Hour,
-  convertTo12Hour,
-  calculateDuration,
-  formatDuration,
-  isValidTimeRange,
-  getTodayDate,
-  getDateOffset,
-  getCurrentWeekRange,
-  formatDateWithRelative,
 };

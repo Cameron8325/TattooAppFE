@@ -1,52 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import {
-    PieChart,
-    Pie,
-    Cell,
-    Tooltip,
-    ResponsiveContainer,
-} from 'recharts';
-import axios from '../../services/axios'
-import { chartPalette } from '../../theme';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useTheme } from '@mui/material/styles';
+import axios from '../../services/axios';
 
 const ArtistPerformanceChart = () => {
-    const [data, setData] = useState([]);
+  const theme = useTheme();
+  const [data, setData] = useState([]);
 
-    useEffect(() => {
-        axios.get('/artists/performance/')
-            .then((response) => setData(response.data))
-            .catch((error) => {
-                console.error('Error fetching artist performance:', error);
-                setData([
-                    { artist: 'Artist A', appointments: 20 },
-                    { artist: 'Artist B', appointments: 15 },
-                    { artist: 'Artist C', appointments: 10 },
-                ]);
-            });
-    }, []);
-    
+  useEffect(() => {
+    axios.get('/artists/performance/').then(({ data: response }) => setData(response)).catch(() => setData([]));
+  }, []);
 
-    return (
-        <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-                <Pie
-                    data={data}
-                    dataKey="appointments"
-                    nameKey="artist"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    fill={chartPalette[0]}
-                    label
-                >
-                    {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={chartPalette[index % chartPalette.length]} />
-                    ))}
-                </Pie>
-                <Tooltip />
-            </PieChart>
-        </ResponsiveContainer>
-    );
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={theme.palette.divider} />
+        <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="artist" width={82} tickLine={false} axisLine={false} />
+        <Tooltip cursor={{ fill: theme.palette.neutral.bg }} />
+        <Bar dataKey="appointments" fill={theme.palette.secondary.main} radius={[0, 3, 3, 0]} barSize={18} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
 };
 
 export default ArtistPerformanceChart;
