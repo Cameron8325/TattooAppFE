@@ -20,7 +20,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.57.0",
     "eslint-config-react-app": "^7.0.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.1.10"
   },
   "scripts": {
     "dev": "vite",
@@ -28,7 +29,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src",
-    "test": "echo \"TODO(Phase 5): migrate tests to Vitest\" && exit 0"
+    "test": "vitest run"
   },
   "eslintConfig": {
     "extends": [

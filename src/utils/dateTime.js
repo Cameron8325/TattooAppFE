@@ -1,3 +1,17 @@
+const parseLocalDate = (dateString) => {
+  if (!dateString) return null;
+  if (dateString instanceof Date) return new Date(dateString.getTime());
+
+  const dateOnlyMatch = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const parsed = new Date(dateString);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 /**
  * Format a date string to MM/DD/YYYY format
  * @param {string} dateString - ISO date string
@@ -5,8 +19,8 @@
  */
 export const formatDate = (dateString) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
+  const date = parseLocalDate(dateString);
+  if (!date) return dateString;
   
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -59,7 +73,8 @@ export const formatDateTime = (dateString, timeString) => {
  */
 export const isToday = (dateString) => {
   if (!dateString) return false;
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
+  if (!date) return false;
   const today = new Date();
   return (
     date.getDate() === today.getDate() &&
@@ -75,7 +90,8 @@ export const isToday = (dateString) => {
  */
 export const isThisWeek = (dateString) => {
   if (!dateString) return false;
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
+  if (!date) return false;
   const today = new Date();
   
   // Get start of week (Sunday)
@@ -98,7 +114,8 @@ export const isThisWeek = (dateString) => {
  */
 export const isPast = (dateString) => {
   if (!dateString) return false;
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
+  if (!date) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return date < today;
@@ -111,7 +128,8 @@ export const isPast = (dateString) => {
  */
 export const isFuture = (dateString) => {
   if (!dateString) return false;
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
+  if (!date) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return date > today;

@@ -8,7 +8,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "../../services/axios";
-import { getTodayDate } from "../../utils/dateTime";
+import { getTodayDate, isValidTimeRange } from "../../utils/dateTime";
 import { getCSRFToken } from "../../services/authService";
 
 const AppointmentModal = ({
@@ -52,6 +52,7 @@ const AppointmentModal = ({
   useEffect(() => {
     if (!open) return;
     setError("");
+    if (user.role === "employee") setArtists([user]);
     const fetchDropdowns = async () => {
       try {
         const requests = user.role === "admin"
@@ -115,6 +116,34 @@ const AppointmentModal = ({
 
   // Save or update
   const handleSave = async () => {
+    setError("");
+
+    if (!formData.employee) return setError("Select an employee.");
+    if (!formData.service) return setError("Select a service.");
+    if (formData.price === "" || !Number.isFinite(Number(formData.price)) || Number(formData.price) < 0) {
+      return setError("Enter a price of zero or more.");
+    }
+    if (!formData.date || !formData.startTime || !formData.endTime) {
+      return setError("Add the appointment date, start time, and end time.");
+    }
+    if (!isValidTimeRange(formData.startTime, formData.endTime)) {
+      return setError("End time must be after start time.");
+    }
+    if (
+      formData.depositRequired &&
+      formData.depositAmount !== "" &&
+      (!Number.isFinite(Number(formData.depositAmount)) || Number(formData.depositAmount) < 0)
+    ) {
+      return setError("Enter a deposit amount of zero or more.");
+    }
+    if (
+      formData.depositRequired &&
+      formData.depositAmount !== "" &&
+      Number(formData.depositAmount) > Number(formData.price)
+    ) {
+      return setError("Deposit amount cannot exceed the appointment price.");
+    }
+
     const isAdmin = user.role === "admin";
     const payload = {
       employee: formData.employee,
@@ -134,6 +163,9 @@ const AppointmentModal = ({
     if (isNewClient) {
       if (!newClientData.first_name || !newClientData.last_name || !newClientData.email) {
         return setError("Add the new client's first name, last name, and email.");
+      }
+      if (!/^\S+@\S+\.\S+$/.test(newClientData.email)) {
+        return setError("Enter a valid client email address.");
       }
       payload.new_client = { ...newClientData, employee: formData.employee };
     } else {
@@ -261,8 +293,9 @@ const AppointmentModal = ({
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Email"
+              <TextField
+                label="Email"
+                type="email"
                   fullWidth
                   value={newClientData.email}
                   onChange={e =>
@@ -287,8 +320,10 @@ const AppointmentModal = ({
           <Grid item xs={12}><Divider sx={{ my: 0.5 }} /><Typography variant="overline" sx={{ color: "text.secondary" }}>Booking details</Typography></Grid>
           <Grid item xs={12}>
             <FormControl fullWidth disabled={user.role === "employee"}>
-              <InputLabel>Employee</InputLabel>
+              <InputLabel id="appointment-employee-label">Employee</InputLabel>
               <Select
+                labelId="appointment-employee-label"
+                label="Employee"
                 name="employee"
                 value={formData.employee}
                 onChange={handleChange}
@@ -303,8 +338,10 @@ const AppointmentModal = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
-              <InputLabel>Service</InputLabel>
+              <InputLabel id="appointment-service-label">Service</InputLabel>
               <Select
+                labelId="appointment-service-label"
+                label="Service"
                 name="service"
                 value={formData.service}
                 onChange={(event) => {
@@ -329,6 +366,7 @@ const AppointmentModal = ({
               fullWidth
               value={formData.price}
               onChange={handleChange}
+              inputProps={{ min: 0, step: "0.01" }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
