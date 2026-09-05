@@ -15,9 +15,11 @@ import {
   CircularProgress,
   Chip,
   IconButton,
+  Alert,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import axios from "../../services/axios";
+import { getErrorMessage } from "../../services/axios";
 import { formatTime, formatDate } from "../../utils/dateTime";
 import { SERVICE_LABELS } from "../../constants";
 
@@ -26,18 +28,18 @@ import { SERVICE_LABELS } from "../../constants";
 const deduplicateNotifications = (notifications) => {
   const grouped = {};
   notifications.forEach((notif) => {
-    const key = notif.appointment_id || notif.id;
+    const key = notif.appointment_id ? `appointment:${notif.appointment_id}` : `notice:${notif.id}`;
     if (!grouped[key]) {
       grouped[key] = notif;
     } else {
       if (grouped[key].status !== "pending" && notif.status === "pending") {
         grouped[key] = notif;
-      } else if (new Date(notif.timestamp) > new Date(grouped[key].timestamp)) {
+      } else if (grouped[key].status === notif.status && new Date(notif.timestamp) > new Date(grouped[key].timestamp)) {
         grouped[key] = notif;
       }
     }
   });
-  return Object.values(grouped).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  return Object.values(grouped).sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || new Date(b.timestamp) - new Date(a.timestamp));
 };
 
 // Helper to render an employee's name (prefer full_name, then username)
@@ -49,7 +51,8 @@ const getEmployeeName = (employee) => {
 };
 
 const normalize = (field, value) => {
-  if (!value) return "";
+  if (value === null || value === undefined) return "";
+  if (field === 'deposit_required' || field === 'deposit_paid') return value ? 'Yes' : 'No';
   if (field === "service") return SERVICE_LABELS[value] || value;
   if (field === "time" || field === "end_time") return formatTime(value);
   if (field === "date") return formatDate(value);
@@ -118,8 +121,8 @@ const getTimeValues = (notification) => {
  * Renders a table displaying appointment details with previous and new values.
  */
 const renderDiffTable = (notification) => {
-  const client = notification.appointment_details.client;
-  const artist = notification.appointment_details.artist;
+  const client = getFieldValues(notification, 'client');
+  const artist = getFieldValues(notification, 'artist');
   const serviceValues = getFieldValues(notification, "service");
   const priceValues = getFieldValues(notification, "price");
   const dateValues = getFieldValues(notification, "date");
@@ -127,13 +130,17 @@ const renderDiffTable = (notification) => {
   const timeValues = getTimeValues(notification);
 
   const rows = [
-    { label: "Client", previous: client, current: client },
-    { label: "Artist", previous: artist, current: artist },
+    { label: "Client", previous: client.previous, current: client.current },
+    { label: "Artist", previous: artist.previous, current: artist.current },
     { label: "Service", previous: serviceValues.previous, current: serviceValues.current },
     { label: "Price", previous: `$${priceValues.previous}`, current: `$${priceValues.current}` },
     { label: "Date", previous: dateValues.previous, current: dateValues.current },
     { label: "Time", previous: timeValues.previous, current: timeValues.current },
     { label: "Notes", previous: notesValues.previous, current: notesValues.current },
+    ...['deposit_required', 'deposit_paid', 'deposit_amount'].map(field => ({
+      label: {deposit_required:'Deposit required', deposit_paid:'Deposit paid', deposit_amount:'Deposit amount'}[field],
+      ...getFieldValues(notification, field),
+    })),
   ];
 
   return (
@@ -165,6 +172,7 @@ const NotificationsPanel = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [error, setError] = useState('');
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -189,7 +197,7 @@ const NotificationsPanel = () => {
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
-      console.error("Error approving notification:", err);
+      setError(getErrorMessage(err));
     }
   };
 
@@ -199,17 +207,18 @@ const NotificationsPanel = () => {
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
-      console.error("Error declining notification:", err);
+      setError(getErrorMessage(err));
     }
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Delete this reviewed activity entry? The booking will be kept.')) return;
     try {
       await axios.delete(`/recent-activity/${id}/delete/`);
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
-      console.error("Error deleting notification:", err);
+      setError(getErrorMessage(err));
     }
   };
 
@@ -237,6 +246,7 @@ const NotificationsPanel = () => {
 
   return (
     <Box>
+      {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
       {notifications.length === 0 ? (
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
           No recent activity.
@@ -249,7 +259,7 @@ const NotificationsPanel = () => {
               key={notification.id}
               role="button"
               tabIndex={0}
-              aria-label={`View details: ${actionLabel(notification.action)} by ${getEmployeeName(notification.employee)}`}
+              aria-label={`View details: ${actionLabel(notification.action)} by ${notification.employee_name || getEmployeeName(notification.employee)}`}
               onClick={() => setSelectedNotification(notification)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -264,7 +274,7 @@ const NotificationsPanel = () => {
                 gap: 2,
                 py: 2,
                 px: 1.5,
-                mx: -1.5,
+                mx: 0,
                 borderRadius: 1,
                 borderBottom: "1px solid",
                 borderColor: "divider",
@@ -303,11 +313,13 @@ const NotificationsPanel = () => {
               size="small"
               sx={{ float: "right" }}
               title="Delete Notification"
+              disabled={selectedNotification.status === 'pending'}
             >
               <DeleteIcon />
             </IconButton>
           </DialogTitle>
           <DialogContent dividers>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
             <Typography variant="subtitle1" gutterBottom>
               <strong>Employee:</strong> {selectedNotification.employee_name || getEmployeeName(selectedNotification.employee)}
             </Typography>

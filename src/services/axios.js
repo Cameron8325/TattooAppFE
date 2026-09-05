@@ -3,9 +3,9 @@ import axios from "axios";
 // Create Axios instance with environment-based configuration
 // (Vite: env vars must be prefixed VITE_ and read via import.meta.env)
 const instance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/",
+    baseURL: import.meta.env.VITE_API_URL || "/api/",
     withCredentials: true,  // Required for Django to send cookies
-    timeout: 10000, // 10 second timeout
+    timeout: import.meta.env.VITE_DEMO_MODE === 'true' ? 90000 : 10000,
 });
 
 // ✅ Fetch CSRF Token Directly from Django
@@ -15,7 +15,7 @@ const getCSRFTokenFromBackend = async () => {
         return response.data.csrfToken;
     } catch (error) {
         console.error("❌ Error fetching CSRF token:", error);
-        return null;
+        throw new Error('The studio server could not be reached. Please try again.');
     }
 };
 
@@ -32,10 +32,7 @@ instance.interceptors.request.use(
 
         // Log requests in development
         if (import.meta.env.DEV) {
-            console.log(`[${config.method.toUpperCase()}] ${config.url}`, {
-                data: config.data,
-                params: config.params,
-            });
+            console.log(`[${config.method.toUpperCase()}] ${config.url}`);
         }
 
         return config;
@@ -50,12 +47,6 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
     (response) => {
         // Log successful responses in development
-        if (import.meta.env.DEV) {
-            console.log(`[${response.config.method.toUpperCase()}] ${response.config.url} - Success`, {
-                status: response.status,
-                data: response.data,
-            });
-        }
         return response;
     },
     (error) => {
@@ -133,15 +124,10 @@ export const getErrorMessage = (error) => {
         if (data.message) return data.message;
         
         // Check for field-specific errors
-        if (typeof data === 'object') {
-            const firstKey = Object.keys(data)[0];
-            if (Array.isArray(data[firstKey])) {
-                return data[firstKey][0];
-            }
-            if (typeof data[firstKey] === 'string') {
-                return data[firstKey];
-            }
-        }
+        const firstMessage = (value) => typeof value === 'string' ? value
+            : value && typeof value === 'object' ? Object.values(value).map(firstMessage).find(Boolean) : null;
+        const message = firstMessage(data);
+        if (message) return message;
     }
     
     // Fallback error messages

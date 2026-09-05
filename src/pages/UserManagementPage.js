@@ -87,7 +87,7 @@ const UserManagementPage = () => {
                 <TableCell><Chip size="small" label={ROLE_LABELS[account.role] || account.role} sx={account.role === 'admin' ? { bgcolor: 'primary.bg', color: 'primary.main' } : { bgcolor: 'secondary.bg', color: 'secondary.main' }} /></TableCell>
                 <TableCell align="right">
                   <IconButton aria-label={`Edit ${account.username}`} size="small" onClick={() => setEditing(account)}><EditOutlinedIcon fontSize="small" /></IconButton>
-                  <IconButton aria-label={`Delete ${account.username}`} size="small" color="error" onClick={() => handleDelete(account)}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                  <IconButton aria-label={`Delete ${account.username}`} disabled={account.is_demo_account} size="small" color="error" onClick={() => handleDelete(account)}><DeleteOutlineIcon fontSize="small" /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -99,12 +99,14 @@ const UserManagementPage = () => {
         <Box component="form" onSubmit={handleSave}>
           <DialogTitle>Edit team member</DialogTitle>
           <DialogContent dividers>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {editing?.is_demo_account && <Alert severity="info" sx={{ mb: 2 }}>Demo sign-in details stay available for visitors. Add a team member to try changing account access.</Alert>}
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, pt: 1 }}>
               <TextField name="first_name" label="First name" defaultValue={editing?.first_name || ''} />
               <TextField name="last_name" label="Last name" defaultValue={editing?.last_name || ''} />
-              <TextField name="username" label="Username" defaultValue={editing?.username || ''} required />
+              <TextField name="username" label="Username" defaultValue={editing?.username || ''} disabled={editing?.is_demo_account} required />
               <TextField name="email" label="Email" type="email" defaultValue={editing?.email || ''} />
-              <TextField select name="role" label="Role" defaultValue={editing?.role || 'employee'} sx={{ gridColumn: { sm: 'span 2' } }}>
+              <TextField select name="role" label="Role" disabled={editing?.is_demo_account} defaultValue={editing?.role || 'employee'} sx={{ gridColumn: { sm: 'span 2' } }}>
                 <MenuItem value="employee">Artist / employee</MenuItem>
                 <MenuItem value="admin">Administrator</MenuItem>
               </TextField>

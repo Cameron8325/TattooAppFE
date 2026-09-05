@@ -17,6 +17,9 @@ import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
+import { getErrorMessage } from '../services/axios';
+
+const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const LoginPage = () => {
   const { login, user, loading } = useContext(AuthContext);
@@ -29,20 +32,20 @@ const LoginPage = () => {
 
   if (!loading && user) return <Navigate to={user.role === 'admin' ? '/dashboard' : '/employee-dashboard'} replace />;
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const signIn = async (details) => {
     setError('');
     setSubmitting(true);
     try {
-      const account = await login(credentials);
+      const account = await login(details);
       const requestedPath = location.state?.from?.pathname;
       navigate(requestedPath || (account.role === 'admin' ? '/dashboard' : '/employee-dashboard'), { replace: true });
-    } catch {
-      setError('That username and password do not match an account.');
+    } catch (failure) {
+      setError(failure.response?.status === 401 ? 'That username and password do not match an account.' : getErrorMessage(failure));
     } finally {
       setSubmitting(false);
     }
   };
+  const handleSubmit = (event) => { event.preventDefault(); return signIn(credentials); };
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(340px, 0.9fr) minmax(480px, 1.1fr)' }, bgcolor: 'background.paper' }}>
@@ -61,7 +64,7 @@ const LoginPage = () => {
       >
         <Box sx={{ position: 'relative', maxWidth: 480 }}>
           <Typography variant="overline" sx={{ color: 'primary.main' }}>Built for the working studio</Typography>
-          <Typography variant="h1" sx={{ color: 'common.white', mt: 1, mb: 2 }}>Every appointment, artist, and payout in focus.</Typography>
+          <Typography variant="h1" component="h2" sx={{ color: 'common.white', mt: 1, mb: 2 }}>Every appointment, artist, and payout in focus.</Typography>
           <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.62)', mb: 5 }}>A calm command center for the busy parts of tattoo studio operations.</Typography>
           <Stack spacing={2}>
             {[
@@ -81,6 +84,16 @@ const LoginPage = () => {
           <Typography variant="h4" component="h1" sx={{ mt: 0.75 }}>Welcome back</Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1, mb: 4 }}>Sign in to open your workspace.</Typography>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {isDemo && (
+            <Box sx={{ mb: 3 }}>
+              <Typography sx={{ mb: 2 }}>Explore a sample studio with fictional clients. Demo changes can reset; use sample information.</Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button variant="contained" disabled={submitting} onClick={() => signIn({ username: 'admin', password: 'DevSeed123!' })}>Try manager demo</Button>
+                <Button variant="outlined" disabled={submitting} onClick={() => signIn({ username: 'mia.torres', password: 'DevSeed123!' })}>Try artist demo</Button>
+              </Stack>
+              {(loading || submitting) && <Typography role="status" variant="body2" sx={{ mt: 2 }}>The free demo server may take about a minute to wake up.</Typography>}
+            </Box>
+          )}
           <Box component="form" onSubmit={handleSubmit}>
             <Stack spacing={2.25}>
               <TextField label="Username" autoComplete="username" value={credentials.username} onChange={(event) => setCredentials({ ...credentials, username: event.target.value })} required autoFocus />

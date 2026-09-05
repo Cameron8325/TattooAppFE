@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Alert, Box, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import AttachMoneyOutlinedIcon from '@mui/icons-material/AttachMoneyOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
@@ -13,19 +13,23 @@ const metricMeta = {
 };
 
 const KeyMetrics = () => {
-  const [metrics, setMetrics] = useState({});
+  const [metrics, setMetrics] = useState(null);
+  const [error, setError] = useState(false);
   const [range, setRange] = useState('last_30_days');
   const [month, setMonth] = useState('');
 
   useEffect(() => {
     const params = month ? `month=${month}` : `range=${range}`;
-    axios.get(`/metrics/?${params}`).then(({ data }) => setMetrics(data)).catch(() => setMetrics({}));
+    setMetrics(null);
+    setError(false);
+    axios.get(`/metrics/?${params}`).then(({ data }) => setMetrics(data)).catch(() => setError(true));
   }, [month, range]);
 
   const periodLabel = useMemo(() => month ? 'Selected month' : range === 'last_7_days' ? 'Last 7 days' : 'Last 30 days', [month, range]);
 
   return (
     <Box>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>Revenue totals could not be loaded.</Alert>}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, mb: 2 }}>
         <ToggleButtonGroup exclusive size="small" value={month ? null : range} onChange={(_, value) => { if (value) { setRange(value); setMonth(''); } }} aria-label="Metric range">
           <ToggleButton value="last_7_days">7 days</ToggleButton>
@@ -35,7 +39,7 @@ const KeyMetrics = () => {
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2 }}>
         {Object.entries(metricMeta).map(([key, meta]) => (
-          <StatCard key={key} label={meta.label} value={meta.format(metrics[key])} helper={periodLabel} icon={meta.icon} tone={meta.tone} />
+          <StatCard key={key} label={meta.label} value={metrics ? meta.format(metrics[key]) : '—'} helper={error ? 'Unavailable' : metrics ? periodLabel : 'Loading…'} icon={meta.icon} tone={meta.tone} />
         ))}
       </Box>
     </Box>

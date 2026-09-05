@@ -36,7 +36,6 @@ export const AuthProvider = ({ children }) => {
       setUser(data); // ✅ Immediately update the user state
       return data; // ✅ Return user data
     } catch (error) {
-      console.error("Login failed:", error);
       throw error;
     }
   };

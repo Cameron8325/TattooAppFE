@@ -83,6 +83,8 @@ const UpcomingAppointments = () => {
       <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Appointment details</DialogTitle>
         <DialogContent dividers>
+          {message && <Alert severity="info" sx={{ mb: 2 }}>{message}</Alert>}
+          {selected?.requires_approval && <Alert severity="info" sx={{ mb: 2 }}>This booking is awaiting manager approval.</Alert>}
           {selected && (
             <Stack spacing={2}>
               <Box><Typography variant="overline" sx={{ color: 'text.secondary' }}>Client</Typography><Typography variant="h6">{selected.client?.first_name} {selected.client?.last_name}</Typography></Box>
@@ -96,11 +98,11 @@ const UpcomingAppointments = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSelected(null)}>Close</Button>
-          <Button color="error" onClick={() => updateStatus('no_show')}>Mark no-show</Button>
-          <Button color="success" variant="contained" onClick={() => updateStatus('completed')}>Mark completed</Button>
+          <Button color="error" disabled={selected?.requires_approval || selected?.status === 'pending' || selected?.status === 'no_show'} onClick={() => updateStatus('no_show')}>Mark no-show</Button>
+          <Button color="success" variant="contained" disabled={selected?.requires_approval || selected?.status === 'pending' || selected?.status === 'completed'} onClick={() => updateStatus('completed')}>Mark completed</Button>
         </DialogActions>
       </Dialog>
-      <Snackbar open={Boolean(message)} autoHideDuration={3500} onClose={() => setMessage('')}><Alert onClose={() => setMessage('')} severity="info">{message}</Alert></Snackbar>
+      <Snackbar sx={{ zIndex: (theme) => theme.zIndex.drawer - 1 }} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} open={Boolean(message)} autoHideDuration={3500} onClose={() => setMessage('')}><Alert onClose={() => setMessage('')} severity="info">{message}</Alert></Snackbar>
     </Box>
   );
 };

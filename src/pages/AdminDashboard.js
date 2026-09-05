@@ -30,7 +30,7 @@ const AdminDashboard = () => (
       <Box sx={{ display: 'grid', gap: 2.5 }}>
         <Section title="Appointment pulse" subtitle="How bookings are moving through the studio"><AppointmentOverview /></Section>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '1fr 1fr' }, gap: 2.5 }}>
-          <Section title="Booking trend" subtitle="Appointments created over the last 30 days"><AppointmentsChart /></Section>
+          <Section title="Booking trend" subtitle="Scheduled dates from the last 30 days onward"><AppointmentsChart /></Section>
           <Section title="Artist workload" subtitle="Appointment volume by artist"><ArtistPerformanceChart /></Section>
         </Box>
       </Box>

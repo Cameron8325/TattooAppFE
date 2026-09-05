@@ -8,8 +8,8 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "../../services/axios";
+import { getErrorMessage } from "../../services/axios";
 import { getTodayDate, isValidTimeRange } from "../../utils/dateTime";
-import { getCSRFToken } from "../../services/authService";
 
 const AppointmentModal = ({
   open,
@@ -153,8 +153,7 @@ const AppointmentModal = ({
       time: formData.startTime + ":00",
       end_time: formData.endTime + ":00",
       notes: formData.notes,
-      status: isAdmin ? "confirmed" : "pending",
-      requires_approval: !isAdmin,
+      ...(!isEdit ? { status: isAdmin ? "confirmed" : "pending", requires_approval: !isAdmin } : {}),
       deposit_required: formData.depositRequired,
       deposit_paid: formData.depositRequired && formData.depositPaid,
       deposit_amount: formData.depositRequired && formData.depositAmount ? formData.depositAmount : null,
@@ -179,63 +178,45 @@ const AppointmentModal = ({
       if (isEdit) {
         await axios.patch(
           `/appointments/${initialData.id}/reschedule/`,
-          payload,
-          { headers: { "X-CSRFToken": await getCSRFToken() } }
+          payload
         );
       } else {
         await axios.post(
           "/appointments/",
-          payload,
-          { headers: { "X-CSRFToken": await getCSRFToken() } }
+          payload
         );
       }
       onSave();
     } catch (err) {
       console.error("Save failed:", err);
-      const responseData = err.response?.data;
-      const firstError = responseData && Object.values(responseData)[0];
-      setError(Array.isArray(firstError) ? firstError[0] : responseData?.error || "The appointment could not be saved.");
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
   };
 
-  // Mark Completed
-  const handleMarkCompleted = async () => {
+  const recordOutcome = async (status) => {
+    setError("");
+    setSaving(true);
     try {
-      await axios.patch(
-        `/appointments/${initialData.id}/reschedule/`,
-        { status: "completed" },
-        { headers: { "X-CSRFToken": await getCSRFToken() } }
-      );
+      await axios.patch(`/appointments/${initialData.id}/reschedule/`, { status });
       onSave();
-    } catch (e) {
-      console.error(e);
-      alert("Error marking completed");
+    } catch (failure) {
+      setError(getErrorMessage(failure));
+    } finally {
+      setSaving(false);
     }
   };
-
-  // Mark No-Show
-  const handleMarkNoShow = async () => {
-    try {
-      await axios.patch(
-        `/appointments/${initialData.id}/reschedule/`,
-        { status: "no_show" },
-        { headers: { "X-CSRFToken": await getCSRFToken() } }
-      );
-      onSave();
-    } catch (e) {
-      console.error(e);
-      alert("Error marking no-show");
-    }
-  };
+  const handleMarkCompleted = () => recordOutcome('completed');
+  const handleMarkNoShow = () => recordOutcome('no_show');
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ pr: 6 }}>
         {isEdit ? "Edit appointment" : "New appointment"}
         <IconButton
           aria-label="close"
+          disabled={saving}
           onClick={onClose}
           sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
         >
@@ -434,17 +415,17 @@ const AppointmentModal = ({
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+      <DialogActions sx={{ flexWrap: 'wrap', gap: 1, '& > :not(style) ~ :not(style)': { ml: 0 } }}>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
         <Button onClick={handleSave} variant="contained" color="primary" disabled={saving}>
           {saving ? "Saving..." : isEdit ? "Save changes" : "Create appointment"}
         </Button>
         {isEdit && (
           <>
-            <Button onClick={handleMarkCompleted} color="success">
+            <Button onClick={handleMarkCompleted} color="success" disabled={saving || initialData.status === 'completed' || (user.role !== 'admin' && initialData.requires_approval)}>
               Mark completed
             </Button>
-            <Button onClick={handleMarkNoShow} color="error">
+            <Button onClick={handleMarkNoShow} color="error" disabled={saving || initialData.status === 'no_show' || (user.role !== 'admin' && initialData.requires_approval)}>
               Mark no-show
             </Button>
           </>

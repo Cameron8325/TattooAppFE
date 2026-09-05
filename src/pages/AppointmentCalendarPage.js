@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import { Alert, Box, Button, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
@@ -23,12 +23,23 @@ const AppointmentCalendarPage = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [error, setError] = useState('');
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [calendarView, setCalendarView] = useState(() => window.matchMedia('(max-width: 700px)').matches ? 'day' : 'week');
+  const requestNumber = useRef(0);
 
   const fetchAppointments = useCallback(async () => {
+    const request = ++requestNumber.current;
+    setError('');
     try {
       const params = new URLSearchParams();
+      const start = moment(calendarDate).startOf(calendarView);
+      const end = moment(calendarDate).endOf(calendarView);
+      if (calendarView === 'month') { start.startOf('week'); end.endOf('week'); }
+      params.set('start_date', start.format('YYYY-MM-DD'));
+      params.set('end_date', end.format('YYYY-MM-DD'));
       if (selectedEmployee !== 'all') params.set('employee', selectedEmployee);
       const { data } = await axios.get(`/appointments/?${params.toString()}`);
+      if (request !== requestNumber.current) return;
       setAppointments(data.map((appointment) => ({
         id: appointment.id,
         title: `${appointment.client?.first_name || 'Client'} · ${appointment.service_display || appointment.service}`,
@@ -38,9 +49,9 @@ const AppointmentCalendarPage = () => {
         source: appointment,
       })));
     } catch {
-      setError('The calendar could not be loaded.');
+      if (request === requestNumber.current) setError('The calendar could not be loaded.');
     }
-  }, [selectedEmployee]);
+  }, [selectedEmployee, calendarDate, calendarView]);
 
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
   useEffect(() => {
@@ -49,7 +60,7 @@ const AppointmentCalendarPage = () => {
 
   const openNew = (slot = null) => {
     setSelectedEvent(null);
-    setDraftSlot(slot ? { date: toDateInput(slot.start), startTime: toTimeInput(slot.start), endTime: toTimeInput(slot.end) } : null);
+    setDraftSlot(slot ? { date: toDateInput(slot.start), startTime: calendarView === 'month' ? '12:00' : toTimeInput(slot.start), endTime: calendarView === 'month' ? '13:00' : toTimeInput(slot.end) } : null);
     setOpenModal(true);
   };
 
@@ -105,7 +116,10 @@ const AppointmentCalendarPage = () => {
             return { style: { backgroundColor: token.bg, color: token.text, border: `1px solid ${token.main}`, borderLeftWidth: 3 } };
           }}
           views={['month', 'week', 'day']}
-          defaultView={window.matchMedia('(max-width: 700px)').matches ? 'day' : 'week'}
+          date={calendarDate}
+          onNavigate={setCalendarDate}
+          view={calendarView}
+          onView={setCalendarView}
           min={new Date(0, 0, 0, 8, 0)}
           max={new Date(0, 0, 0, 20, 0)}
           step={30}

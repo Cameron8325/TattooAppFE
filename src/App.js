@@ -1,6 +1,6 @@
-import React, { useContext } from 'react';
-import { Box } from '@mui/material';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import React, { useContext, useEffect } from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Navbar, { DRAWER_WIDTH } from './components/navbar/Navbar';
 import ProtectedRoute from './components/routing/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
@@ -18,13 +18,15 @@ import { AuthContext, AuthProvider } from './context/authContext';
 
 const HomeRedirect = () => {
   const { user, loading } = useContext(AuthContext);
-  if (loading) return null;
+  if (loading) return <Box role="status" sx={{ display: 'grid', justifyItems: 'center', gap: 2, pt: 14 }}><CircularProgress /><Typography>Opening the studio…</Typography>{import.meta.env.VITE_DEMO_MODE === 'true' && <Typography>The free demo server may take about a minute to wake up.</Typography>}</Box>;
   if (!user) return <Navigate to="/login" replace />;
   return <Navigate to={user.role === 'admin' ? '/dashboard' : '/employee-dashboard'} replace />;
 };
 
 const AppFrame = () => {
   const { user } = useContext(AuthContext);
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return (
     <Box sx={{ minHeight: '100vh' }}>
       <Navbar />

@@ -65,7 +65,7 @@ const Navbar = () => {
   if (!user) {
     return (
       <Box component="header" sx={{ position: 'absolute', top: 0, left: 0, zIndex: 2, p: { xs: 2, md: 3 } }}>
-        <Stack component={Link} to="/" direction="row" spacing={1.25} alignItems="center" sx={{ textDecoration: 'none', color: 'common.white' }}>
+        <Stack component={Link} to="/" direction="row" spacing={1.25} alignItems="center" sx={{ textDecoration: 'none', color: { xs: 'text.primary', md: 'common.white' } }}>
           <Box sx={{ width: 30, height: 30, bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center', borderRadius: 1, fontSize: 11, fontWeight: 800, letterSpacing: '-0.04em' }}>IM</Box>
           <Typography variant="h6">Imaginarium</Typography>
         </Stack>
@@ -124,7 +124,7 @@ const Navbar = () => {
       </Box>
 
       <Box sx={{ p: 1.25 }}>
-        <ListItemButton onClick={logout} sx={{ borderRadius: 1, color: 'rgba(255,255,255,0.68)' }}>
+        <ListItemButton onClick={() => { setMobileOpen(false); logout(); }} sx={{ borderRadius: 1, color: 'rgba(255,255,255,0.68)' }}>
           <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}><LogoutOutlinedIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary="Sign out" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
         </ListItemButton>

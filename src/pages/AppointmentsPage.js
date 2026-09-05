@@ -179,12 +179,12 @@ const AppointmentsPage = () => {
         onClose={() => setOpenModal(false)}
         onSave={() => {
           setOpenModal(false);
-          setSnackbar({ open: true, message: modalData ? 'Appointment updated.' : 'Appointment created.', severity: 'success' });
+          setSnackbar({ open: true, message: user.role === 'employee' ? 'Request submitted for manager approval.' : modalData ? 'Appointment updated.' : 'Appointment created.', severity: 'success' });
           fetchAppointments();
         }}
         user={user}
       />
-      <Snackbar open={snackbar.open} autoHideDuration={3500} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+      <Snackbar sx={{ zIndex: (theme) => theme.zIndex.drawer - 1 }} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} open={snackbar.open} autoHideDuration={3500} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>{snackbar.message}</Alert>
       </Snackbar>
     </PageContainer>

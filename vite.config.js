@@ -10,6 +10,13 @@ export default defineConfig({
   server: {
     port: 3000, // match CRA so Django CORS_ALLOWED_ORIGINS keeps working
     open: false,
+    proxy: {
+      '/api': {
+        target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
   build: {
     outDir: 'build', // match CRA output path

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Accordion,
   AccordionDetails,
@@ -42,8 +42,14 @@ const BillingReportsPage = () => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { setReportData(null); setError(''); }, [month, year, feeType, feeValue]);
 
   const generateReport = async () => {
+    if (feeValue === '' || !Number.isFinite(Number(feeValue)) || Number(feeValue) < 0 || (feeType === 'percentage' && Number(feeValue) > 100)) {
+      setError(feeType === 'percentage' ? 'Enter a fee percentage between 0 and 100.' : 'Enter a fee of zero or more.');
+      setReportData(null);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
