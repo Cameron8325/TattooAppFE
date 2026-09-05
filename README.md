@@ -20,15 +20,17 @@ needed. The default proxy keeps session and CSRF cookies on the frontend origin.
 
 ## Public demo
 
-Deploy this repository to Cloudflare Pages with build command `npm run build`
-and output directory `build`. Set `VITE_DEMO_MODE=true` for the public sample
-studio and `API_ORIGIN` to the HTTPS origin of the separate Render demo API.
-The `functions/api/[[path]].js` route forwards only API requests; static pages
-do not invoke the proxy. Set the API's `FRONTEND_URL` to the exact Pages URL.
+Build with `VITE_DEMO_MODE=true` and upload the `build` folder or a zip of its
+contents to Netlify. The checked-in `public/_redirects` proxies `/api/*` to the
+separate free Render demo API, then falls back to `index.html` for application
+routes. Configure the API's `FRONTEND_URL` with the exact Netlify public URL.
 
 The demo offers manager and artist entry buttons and uses fictional data.
-It never points at the studio's database. Free hosting can need about a minute
-to wake up; sample changes can reset when the API restarts.
+Its API always uses separate disposable SQLite storage. Free hosting can need
+about a minute to wake up; sample changes can reset when the API restarts.
+Idempotent reads may retry once after a hosting timeout; writes are never
+replayed automatically. Session responses are served with `Cache-Control: no-store`.
 
-Normal studio deployments leave `VITE_DEMO_MODE` unset. Demo login buttons
-and their shared sample credentials are excluded from that interface.
+Normal studio deployments leave `VITE_DEMO_MODE` unset and configure their own
+API routing. Demo entry buttons are omitted from that interface. The checked-in
+Netlify proxy is specifically the public sample environment.

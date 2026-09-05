@@ -50,6 +50,14 @@ instance.interceptors.response.use(
         return response;
     },
     (error) => {
+        const original = error.config;
+        // Only reads may retry when a sleeping free demo server outlasts the
+        // hosting proxy. Never replay a booking or other write automatically.
+        if (import.meta.env.VITE_DEMO_MODE === 'true' && original?.method === 'get' &&
+            !original._demoRetry && ([502, 503, 504].includes(error.response?.status) || error.code === 'ECONNABORTED')) {
+            original._demoRetry = true;
+            return instance(original);
+        }
         // Handle different error scenarios
         if (error.response) {
             // Server responded with error status
