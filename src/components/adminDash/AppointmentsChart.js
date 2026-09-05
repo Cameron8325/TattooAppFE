@@ -9,27 +9,29 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { useTheme } from '@mui/material/styles';
+import { Alert, Typography } from '@mui/material';
 import axios from '../../services/axios.js';
 
-const AppointmentsChart = () => {
+const AppointmentsChart = ({ refreshVersion = 0 }) => {
     const theme = useTheme();
     const [data, setData] = useState([]);
+    const [error, setError] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let current = true;
+        setLoading(true);
+        setError(false);
         axios.get('/appointments/stats/')
-            .then((response) => setData(response.data))
-            .catch((error) => {
-                console.error('Error fetching chart data:', error);
-                // Fallback mock data
-                setData([
-                    { date: '2025-01-01', appointments: 5 },
-                    { date: '2025-01-02', appointments: 8 },
-                    { date: '2025-01-03', appointments: 4 },
-                ]);
-            });
-    }, []);
+            .then((response) => current && setData(response.data))
+            .catch(() => current && setError(true))
+            .finally(() => current && setLoading(false));
+        return () => { current = false; };
+    }, [refreshVersion]);
     
-
+    if (error) return <Alert severity="error">Booking trend could not be loaded.</Alert>;
+    if (loading) return <Typography>Loading booking trend…</Typography>;
+    if (data.length === 0) return <Typography>No bookings in this period.</Typography>;
     return (
         <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>

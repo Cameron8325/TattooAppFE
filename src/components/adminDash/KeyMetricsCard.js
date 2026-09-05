@@ -12,18 +12,20 @@ const metricMeta = {
   clients_served: { label: 'Clients served', icon: <PeopleAltOutlinedIcon />, tone: 'info', format: (value) => Number(value || 0).toLocaleString() },
 };
 
-const KeyMetrics = () => {
+const KeyMetrics = ({ refreshVersion = 0 }) => {
   const [metrics, setMetrics] = useState(null);
   const [error, setError] = useState(false);
   const [range, setRange] = useState('last_30_days');
   const [month, setMonth] = useState('');
 
   useEffect(() => {
+    let current = true;
     const params = month ? `month=${month}` : `range=${range}`;
     setMetrics(null);
     setError(false);
-    axios.get(`/metrics/?${params}`).then(({ data }) => setMetrics(data)).catch(() => setError(true));
-  }, [month, range]);
+    axios.get(`/metrics/?${params}`).then(({ data }) => current && setMetrics(data)).catch(() => current && setError(true));
+    return () => { current = false; };
+  }, [month, range, refreshVersion]);
 
   const periodLabel = useMemo(() => month ? 'Selected month' : range === 'last_7_days' ? 'Last 7 days' : 'Last 30 days', [month, range]);
 

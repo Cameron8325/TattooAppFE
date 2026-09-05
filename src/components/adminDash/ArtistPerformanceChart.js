@@ -1,15 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTheme } from '@mui/material/styles';
+import { Alert, Typography } from '@mui/material';
 import axios from '../../services/axios';
 
-const ArtistPerformanceChart = () => {
+const ArtistPerformanceChart = ({ refreshVersion = 0 }) => {
   const theme = useTheme();
   const [data, setData] = useState([]);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('/artists/performance/').then(({ data: response }) => setData(response)).catch(() => setData([]));
-  }, []);
+    let current = true;
+    setLoading(true);
+    setError(false);
+    axios.get('/artists/performance/').then(({ data: response }) => current && setData(response))
+      .catch(() => current && setError(true)).finally(() => current && setLoading(false));
+    return () => { current = false; };
+  }, [refreshVersion]);
+
+  if (error) return <Alert severity="error">Artist workload could not be loaded.</Alert>;
+  if (loading) return <Typography>Loading artist workload…</Typography>;
+  if (data.length === 0) return <Typography>No artist bookings in this period.</Typography>;
 
   return (
     <ResponsiveContainer width="100%" height={260}>

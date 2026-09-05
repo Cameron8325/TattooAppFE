@@ -11,17 +11,19 @@ const STAT_LABELS = [
   { key: 'no_show', label: 'No-show' },
 ];
 
-const AppointmentOverview = () => {
+const AppointmentOverview = ({ refreshVersion = 0 }) => {
   const [data, setData] = useState(null);
   const [filter, setFilter] = useState('all');
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    let current = true;
     const params = filter === 'all' ? '' : `?filter=${filter}`;
     setData(null);
     setError(false);
-    axios.get(`/appointments/overview/${params}`).then(({ data: response }) => setData(response)).catch(() => setError(true));
-  }, [filter]);
+    axios.get(`/appointments/overview/${params}`).then(({ data: response }) => current && setData(response)).catch(() => current && setError(true));
+    return () => { current = false; };
+  }, [filter, refreshVersion]);
 
   return (
     <Box>

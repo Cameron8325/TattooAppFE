@@ -168,7 +168,7 @@ const renderDiffTable = (notification) => {
   );
 };
 
-const NotificationsPanel = () => {
+const NotificationsPanel = ({ onAppointmentChange }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
@@ -176,12 +176,14 @@ const NotificationsPanel = () => {
 
   const fetchNotifications = async () => {
     setLoading(true);
+    setError('');
     try {
       const { data } = await axios.get("/recent-activity/");
       const deduped = deduplicateNotifications(data);
       setNotifications(deduped);
     } catch (err) {
       console.error("Error fetching notifications:", err);
+      setError('The approval queue could not be loaded. Refresh the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -194,6 +196,7 @@ const NotificationsPanel = () => {
   const handleApprove = async (id) => {
     try {
       await axios.post(`/recent-activity/${id}/approve/`);
+      onAppointmentChange?.();
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
@@ -204,6 +207,7 @@ const NotificationsPanel = () => {
   const handleDecline = async (id) => {
     try {
       await axios.post(`/recent-activity/${id}/decline/`);
+      onAppointmentChange?.();
       fetchNotifications();
       setSelectedNotification(null);
     } catch (err) {
@@ -247,7 +251,7 @@ const NotificationsPanel = () => {
   return (
     <Box>
       {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
-      {notifications.length === 0 ? (
+      {notifications.length === 0 && !error ? (
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
           No recent activity.
         </Typography>
